@@ -14,7 +14,7 @@ import java.util.Properties
 class PropertiesConfig(val propertiesFile: File, val defaults: Map[String, String]) {
   /** creates and initializes the properties.
    */
-  val properties = new Properties() {
+  private [this] val properties = new Properties {
     if (!propertiesFile.exists) {
       propertiesFile.getParentFile.mkdirs
       propertiesFile.createNewFile
@@ -34,6 +34,14 @@ class PropertiesConfig(val propertiesFile: File, val defaults: Map[String, Strin
         }
       case setting => setting
     }
+  }
+  
+  /** Sets a property.
+   *  @param key the property key
+   *  @param value the property value 
+   */
+  def setProperty(key: String, value: String) {
+    properties.setProperty(key, value)
   }
 
   /** Stores the properties file */
