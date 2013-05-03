@@ -44,7 +44,7 @@ For the above code to work, simply define a trait (extending [ObservableConfig](
 Also you'll have to provide a getter and a setter for values. In this case, I use [PropertiesConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/properties/PropertiesConfig.scala) to save the settings automatically to a properties file:
 
     val props = new PropertiesConfig(new File(new File(System.getenv("APPDATA"), "MyProduct"), "MyApp.properties"),
-      Map[String, String]("lastDirectory" -> ".", "host" -> "localhost", "port" -> "8080", "autoConnect" -> "false"))
+      Map("lastDirectory" -> ".", "host" -> "localhost", "port" -> "8080", "autoConnect" -> "false"))
 
 Then we can use [ConfigMacros](https://github.com/michael72/config-macros/blob/master/macros/src/main/scala/org/jaylib/scala/config/macros/ConfigMacros.scala) to generate getters and setters for the Config-trait above. I also provide own [TypeConversions](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/convert/TypeConversions.scala) for java.io.File to save the file as absolute path:
 
