@@ -41,10 +41,21 @@ For the above code to work, simply define a trait (extending [ObservableConfig](
       var autoConnect: Boolean
     }
 
-Also you'll have to provide a getter and a setter for values. In this case, I use [PropertiesConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/properties/PropertiesConfig.scala) to save the settings automatically to a properties file:
+The default values for the config are defined in a Map:
 
-    val props = new PropertiesConfig(new File(new File(System.getenv("APPDATA"), "MyProduct"), "MyApp.properties"),
-      Map("lastDirectory" -> ".", "host" -> "localhost", "port" -> "8080", "autoConnect" -> "false"))
+    val defaults = Map("lastDirectory" -> ".", "host" -> "localhost", "port" -> "8080", "autoConnect" -> "false")
+
+To use the macro a getter and a setter for the values has to be provided. In this case, I use [PropertiesConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/properties/PropertiesConfig.scala) to save the settings automatically to a properties file:
+    
+    val props = new PropertiesConfig(new File(new File(System.getenv("APPDATA"), "MyProduct"), "MyApp.properties"), defaults)
+    
+before exiting the `store` has to be called:
+
+    props.store
+    
+Alternatively instead of saving to a properties file, the config can be stored to the (user-)preferences [PreferencesConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/preferences/PreferencesConfig.scala):
+
+    val props = new PreferencesConfig(classOf[Config], defaults)
 
 Then we can use [ConfigMacros](https://github.com/michael72/config-macros/blob/master/macros/src/main/scala/org/jaylib/scala/config/macros/ConfigMacros.scala) to generate getters and setters for the Config-trait above. I also provide own [TypeConversions](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/convert/TypeConversions.scala) for java.io.File to save the file as absolute path:
 
@@ -55,6 +66,7 @@ Then we can use [ConfigMacros](https://github.com/michael72/config-macros/blob/m
         case any => super.toString(any)
       }
     })
+
 
 Now the config can be used as described in the code at the beginning.
 
