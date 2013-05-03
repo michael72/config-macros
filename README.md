@@ -27,3 +27,10 @@ Or even listen to property changes
     }
 
 This is the aim of config-macros: to provide an easy-to-use way to save and restore application settings.
+
+Examples
+========
+
+I will add examples and a how-to-build later. For now the Scalatest `ConfigMacrosTest` should give a good overview of what is possible with the configmacros.
+
+See [ConfigMacrosTest.scala](http://github.com/michael72/config-macros/blob/master/macros/src/test/scala/org/jaylib/scala/config/macros/ConfigMacrosTest.scala)
