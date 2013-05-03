@@ -15,13 +15,13 @@ import org.jaylib.scala.config.split.Splitter
  * Example: extend TypeConversions for `java.io.File`, where its String representation is mapped to the file's absolute path
  *
 {{{
-val conversions = new TypeConversions {
-  def create_File(absolutePath: String) = new java.io.File(absolutePath)
-  override def toString(any: Any) = any match {
-    case file: java.io.File => file.getAbsolutePath
-    case other              => super.toString(other)
+  val conversions = new TypeConversions {
+      def create_File(absolutePath: String) = new java.io.File(absolutePath)
+      override def toString(any: Any) = any match {
+          case file: java.io.File => file.getAbsolutePath
+          case other              => super.toString(other)
+      }
   }
-}
 }}}
  */
 class TypeConversions {

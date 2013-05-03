@@ -10,23 +10,22 @@ import scala.collection.mutable.{ HashMap, MultiMap, Set }
  * 
  * Example:
  {{{
-   trait Config extends ObservableConfig {
+  trait Config extends ObservableConfig {
     var host: String
     var port: Int
     var autoConnect: Boolean
   }
-  /**
-   * Create an object from the Config definition where access to the variable members
-   *  are redirected to the
-   */
+  
+  // Create an object from the Config definition where access to the variable members
+  // are redirected to the getter and setter.
   val config = ConfigMacros.wrap(classOf[Config], myGetter, mySetter)
 
-  /* When the config extends ObservableConfig we are able to track changed properties. */
+  // When the config extends ObservableConfig we are able to track changed properties.
   config.bindTo(config.port) {
-    (oldPort, newPort) =>
-      println(s"port changed from ${oldPort} to ${newPort}")
+    (oldPort, newPort) => println(s"port changed from ${oldPort} to ${newPort}")
   }
-  /* Simplified version of binding where the old value is neglected. */
+  
+  // Simplified version of binding where the old value is neglected.
   config.bindToValue(config.autoConnect) {
     autoConnect => println("autoConnect is set to " + autoConnect)
   }
@@ -37,9 +36,8 @@ trait ObservableConfig {
   private[this] val bindings = new HashMap[Any, Set[Binding]] with MultiMap[Any, Binding]
 
   /**
-   * Bind a listener to a property of the config.
+   * Bind a listener to a property in the config of type T.
    * 
-   * @paramT T type of the property 
    * @param property the property (i.e. the getter of the var) to watch for changes
    * @param listener taking 2 T arguments: (oldValue, newValue) for the old and new value of the
    * watched property. 
@@ -53,7 +51,6 @@ trait ObservableConfig {
    * Simplified version of binding a listener to a property of the config.
    * The listener is only informed about a new value with getting the old value with it.
    * 
-   * @paramT T type of the property 
    * @param property the property (i.e. the getter of the var) to watch for changes
    * @param listener taking one T argument: (newValue) for the new value of the
    * watched property. 
