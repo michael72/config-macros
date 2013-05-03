@@ -12,15 +12,7 @@ import org.jaylib.scala.config.convert.TypeConversions
 import org.jaylib.scala.config.split.DefaultSplitter
 
 class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with GivenWhenThen {
-  case class Leaf (weight: Char, freq: Int)
-  def makeOrderedLeafList(freqs: List[(Char, Int)]): List[Leaf] = {
-    val buff = ListBuffer[Leaf]();
-    for(u<-freqs) {
-       val v = new Leaf(u._1, u._2)
-       buff += v
-    }
-    buff.toList.sortBy(_.weight) //<= offending line
-  }
+
   "ConfigMacros" should "work on primitive types" in {
     Given("a pure trait with vars of primitive types")
     trait Prim {
