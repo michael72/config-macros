@@ -33,4 +33,4 @@ Examples
 
 I will add examples and a how-to-build later. For now the Scalatest `ConfigMacrosTest` should give a good overview of what is possible with the configmacros.
 
-See [ConfigMacrosTest.scala](http://github.com/michael72/config-macros/blob/master/macros/src/test/scala/org/jaylib/scala/config/macros/ConfigMacrosTest.scala)
+See [ConfigMacrosTest.scala](https://github.com/michael72/config-macros/blob/master/macrotests/src/test/scala/org/jaylib/scala/config/macros/ConfigMacrosTest.scala)
