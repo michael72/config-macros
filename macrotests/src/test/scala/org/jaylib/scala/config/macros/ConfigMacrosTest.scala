@@ -226,6 +226,24 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
             RecursiveClz("pears", Nil))))
   }
 
+  it should "work on on more complicated recursive types" in {
+    import ConfigMacrosTest.{ContainsRec, RecursiveClz, Small}
+    Given("A pure trait containing a case class with a recursive definition")
+    trait ConfigWithRecursion {
+      @autoConstruct
+      var rec: ContainsRec
+    }
+    val map = HashMap[String, String]() ++ Map(
+      "rec" -> """(1,(fruits,(("apples", (("cox orange", ()), ("granny smith", ()))),("pears",()))), (1,2.0))""")
+    When("the trait is wrapped as config")
+    val config = ConfigMacros.wrap(classOf[ConfigWithRecursion], map, map.update)
+    
+    Then("the recursive type can be handled")
+    config.rec should be (ContainsRec(1, RecursiveClz("fruits", 
+        List(RecursiveClz("apples", List(RecursiveClz("cox orange", Nil), RecursiveClz("granny smith", Nil))),
+            RecursiveClz("pears", Nil))), (1,2.0f)))
+  }
+
   it should "work on types that only provide one constructor" in {
 	import ConfigMacrosTest.Simple
     Given("A config trait using a type with only one constructor")
@@ -266,5 +284,7 @@ object ConfigMacrosTest {
   class Simple(val i: Int) {
     override def toString = s"Simple(${i})"
   }
+  case class Small(i: Int)
   case class RecursiveClz(name: String, children: List[RecursiveClz])
+  case class ContainsRec(before: Int, rec: RecursiveClz, tup: (Int, Float))
 }
