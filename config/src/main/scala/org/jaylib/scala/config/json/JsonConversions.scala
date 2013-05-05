@@ -29,6 +29,18 @@ class JsonConversions extends TypeConversions {
     ret.toString
   }
 
+  override protected[this] def mapConverter(childTypes: Iterable[String], mapTypes: MapTypes, splitter: Splitter): String => Map[_, _] = {
+    val Seq(keyConverter, valueConverter) = childTypes.map(getConverter(_, mapTypes, splitter))
+    params: String =>
+      splitter(params).map { kv =>
+        val colon = kv.indexOf(':')
+        val key = kv.substring(0, colon)
+        val value = kv.substring(colon+1)
+        // convert the key to the key-type and the value to the value-type
+        // create a map of keys and values afterwards
+        (keyConverter(key.trim), valueConverter(value.trim))
+      }.toMap
+  }
 
   protected[this] override def defaultConverter(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter): String => Any = {
     val (constructor, convertersPre) = findDefaultConstructors(currentType, childTypes, mapTypes, splitter)
@@ -60,10 +72,10 @@ class JsonConversions extends TypeConversions {
   def seqToString(seq: Seq[_]): String = {
     if (!seq.isEmpty) {
       val clzName = seq(0).getClass.getName
-      if (clzName.startsWith("scala.lang") || clzName.startsWith("java.lang")) 
+      if (clzName.startsWith("scala.lang") || clzName.startsWith("java.lang"))
         // for primitive types the array is a one-liner
         seq.map(toString(_)).mkString("[", ", ", "]")
-      
+
       else mkBlock("[]") {
         seq.map(toString(_))
       }
@@ -74,10 +86,11 @@ class JsonConversions extends TypeConversions {
     mkBlock("{}") {
       convertMap.map {
         case (key, value) =>
-          s"${toString(key)}: ${toString(value)}"
+          new StringBuilder(toString(key)).append(": ").append(toString(value)).toString
       }
     }
   }
+
 
   override def productToString(pr: Product): String = {
     mkBlock("{}") {

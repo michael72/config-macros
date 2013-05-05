@@ -8,9 +8,8 @@ object StringUtils {
         input.indexOf(oldStr) match {
           case -1 => false // string not found - check the next one
           case idx =>
-            buf = new StringBuilder(input.length - oldStr.length + newStr.length)
-            buf.append(input.substring(0, idx))
-            buf.append(newStr)
+            buf = new StringBuilder(input.length - oldStr.length + newStr.length).
+            	append(input.substring(0, idx)).append(newStr)
             if (idx < input.length - oldStr.length)
               buf.append(input.substring(idx + oldStr.length))
             true // breaks the find operation

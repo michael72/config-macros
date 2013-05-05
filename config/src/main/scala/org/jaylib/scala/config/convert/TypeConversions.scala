@@ -46,17 +46,16 @@ class TypeConversions {
    */
   def toString(any: Any): String = any match {
     case str: String =>
-      if (str.indexOf('\"') > -1)
-        s""""${StringUtils.replaceAll(str, "\"", "\\\"")}"""" // attach outer "" and replace inner " with \"
-      else s""""${str}""""
+      new StringBuilder(str.length+2).append('\"').append(StringUtils.replaceAll(str, "\"", "\\\"")).append('\"').toString
     case map: Map[_, _]     => mapToString(map)
-    case tr: Traversable[_] => tr.map(toString(_)).mkString(s"${getClassName(tr.getClass)}(", ", ", ")")
+    case tr: Traversable[_] => tr.map(toString(_)).mkString(getClassName(tr.getClass) + "(", ", ", ")")
     case pr: Product        => productToString(pr)
     case _                  => any.toString
   }
 
   def mapToString(map: Map[_, _]): String =
-    map.iterator.map { case (key, value) => s"${toString(key)} -> ${toString(value)}" }.mkString(s"${getClassName(map.getClass)}(", ", ", ")")
+    map.iterator.map { case (key, value) =>
+      new StringBuilder().append(toString(key)).append(" -> ").append(toString(value))}.mkString(getClassName(map.getClass) + "(", ", ", ")")
 
   def productToString(pr: Product): String = {
     val isTuple = pr.getClass.getName.startsWith("scala.Tuple")
@@ -235,7 +234,7 @@ class TypeConversions {
 }
 
 object TypeConversions {
-  val DefaultTypes = Set("Map", "List", "Set", "Seq", "Vector")
+  val DefaultTypes = Seq("Map", "List", "Set", "Seq", "Vector")
   val CreatorPrefix = "create_"
 
   def creatorFromClassName(clzName: String) = CreatorPrefix + clzName.replaceAll("[\\[\\],.]", "_")
