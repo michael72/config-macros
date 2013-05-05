@@ -190,7 +190,7 @@ object ConfigMacros {
               def defaultAccess(cv: String = convType) = s"""${converterName}.tryConvert("${name}", "${cv}", ${splitterName.decoded})(${value}).asInstanceOf[${rtype}]"""
               // Handle Seq and other SeqLike types 
               if (isSeq) {
-                val (listType, Array(genericType)) = splitter.splitParamType(convType)
+                val (listType, Seq(genericType)) = splitter.splitParamType(convType)
                 if (TypeConversions.DefaultTypes.contains(listType)) // in case of a default type we don't need an extra mapping
                   defaultAccess()
                 else

@@ -29,7 +29,7 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
       var bool: Boolean
       var string: String
     }
-    val map = HashMap[String, String]() ++ Map("x" -> "1", "y" -> "1.23", "bool" -> "true", "string" -> "eene meene miste")
+    val map = HashMap[String, String]() ++ Map("x" -> "1", "y" -> "1.23", "bool" -> "true", "string" -> "\"eene meene miste\"")
 
     When("the trait is wrapped as config with the map values as initial values")
     val config = ConfigMacros.wrap(classOf[Prim], map, map.update)

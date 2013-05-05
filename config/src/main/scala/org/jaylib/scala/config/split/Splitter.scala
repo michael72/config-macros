@@ -8,16 +8,16 @@ trait Splitter {
    * For an input String Type[Params,...,Params] returns the (Type, [Params,...,Params]) as Tuple of String and Array[String].
    * Params can also consist of nested parameters.
    * Example:
-   * "Items(1,(4,5),6,(7,8))" yields the result Tuple: ("Items", Array("1", "(4,5)", "6", "(7,8)"))
+   * "Items(1,(4,5),6,(7,8))" yields the result Tuple: ("Items", Seq("1", "(4,5)", "6", "(7,8)"))
    */
-  def splitParamType(str: String) : (String, Array[String])
+  def splitParamType(str: String) : (String, Seq[String])
   /**
    * For an input String Type[Params,...,Params] returns the [Params,...,Params] as Array[String].
    * Params can also consist of nested parameters.
    * Example:
    * "Items((1,2),(4,5),(6,7))" yields the result Array: Array("(1,2)", "(4,5)", "(6,7)")
    */
-  def apply(str: String) : Array[String]
+  def apply(str: String) : Seq[String]
   /**
    * Shortens the input classname by its packages.
    * Example:

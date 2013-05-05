@@ -5,6 +5,7 @@ import scala.ref.SoftReference
 import scala.Array.canBuildFrom
 import org.jaylib.scala.config.split.Splitter
 import language.existentials
+import org.jaylib.scala.config.StringUtils
 
 /** Converts a type to its string representation and back.
  *  For creation of the type from a string the `create_...` methods are used.
@@ -30,7 +31,7 @@ class TypeConversions {
   def create_Double(str: String) = str.toDouble
   def create_Boolean(str: String) = str.toBoolean
   def create_String(str: String) = {
-    val ret = str.replace("\\\"", "\"") // replace inner \" with "
+    val ret = StringUtils.replaceAll(str, "\\\"", "\"") // replace inner \" with "
     if (ret.startsWith("\""))
       ret.substring(1, ret.length - 1) // remove outer "" 
     else ret
@@ -44,7 +45,10 @@ class TypeConversions {
    *  a specialized string conversion.
    */
   def toString(any: Any): String = any match {
-    case str: String        => s""""${str.replace("\"", "\\\"")}"""" // attach outer "" and replace inner " with \"
+    case str: String =>
+      if (str.indexOf('\"') > -1)
+        s""""${StringUtils.replaceAll(str, "\"", "\\\"")}"""" // attach outer "" and replace inner " with \"
+      else s""""${str}""""
     case map: Map[_, _]     => mapToString(map)
     case tr: Traversable[_] => tr.map(toString(_)).mkString(s"${getClassName(tr.getClass)}(", ", ", ")")
     case pr: Product        => productToString(pr)
@@ -55,7 +59,7 @@ class TypeConversions {
     map.iterator.map { case (key, value) => s"${toString(key)} -> ${toString(value)}" }.mkString(s"${getClassName(map.getClass)}(", ", ", ")")
 
   def productToString(pr: Product): String = {
-    val isTuple = pr.getClass.getPackage.getName == "scala"
+    val isTuple = pr.getClass.getName.startsWith("scala.Tuple")
     val prefix = if (isTuple) "" else pr.productPrefix
     pr.productIterator.map(toString(_)).mkString(prefix + "(", ", ", ")")
   }
@@ -70,7 +74,7 @@ class TypeConversions {
     }
   }
 
-  protected[this]type MapTypes = HashMap[String, Array[String]]
+  protected[this]type MapTypes = HashMap[String, Seq[String]]
 
   /** Tries to convert a given type string with parameters to the result.
    *  The result has to be casted to the appropriate type in the calling method.
@@ -112,14 +116,14 @@ class TypeConversions {
           splitted._1.mkString(".") + "." + splitted._2.mkString("$")
       }
       if (replType != currentType) {
-        orig(0) = orig(0).replace(currentType, replType)
+        orig(0) = StringUtils.replaceAll(orig(0), currentType, replType)
       }
       children.foreach(child => convertCreateString(orig, child, splitter))
     }
   }
 
-  protected[this] def mapConverter(childTypes: Array[String], mapTypes: MapTypes, splitter: Splitter): String => Map[_, _] = {
-    val Array(keyConverter, valueConverter) = childTypes.map(getConverter(_, mapTypes, splitter))
+  protected[this] def mapConverter(childTypes: Iterable[String], mapTypes: MapTypes, splitter: Splitter): String => Map[_, _] = {
+    val Seq(keyConverter, valueConverter) = childTypes.map(getConverter(_, mapTypes, splitter))
     params: String =>
       splitter(params).map { kv =>
         val Array(key, value) = kv.split("->")
@@ -129,7 +133,7 @@ class TypeConversions {
       }.toMap
   }
 
-  protected[this] def sequenceConverter(currentType: String, childTypes: Array[String], mapTypes: MapTypes, splitter: Splitter): String => Iterable[_] = {
+  protected[this] def sequenceConverter(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter): String => Iterable[_] = {
     val converter = getConverter(childTypes(0), mapTypes, splitter)
 
     currentType match {
@@ -149,17 +153,17 @@ class TypeConversions {
 
   }
 
-  protected[this] def findDefaultConstructors(currentType: String, childTypes: Array[String], mapTypes: MapTypes, splitter: Splitter) = {
-    val constructors = if (currentType.isEmpty) // Tuple
-      Class.forName("scala.Tuple" + childTypes.length).getConstructors
+  protected[this] def findDefaultConstructors(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter) = {
+    val constructors = (if (currentType.isEmpty) // Tuple
+      Class.forName("scala.Tuple" + childTypes.length)
     else // we might have a case class here
-      Class.forName(getCreateString(currentType, splitter)).getConstructors
+      Class.forName(getCreateString(currentType, splitter))).getConstructors.toList
 
     if (childTypes.isEmpty) {
       // search for the best fitting constructor (smallest number of parameters & does not contain current type)
-      (if (constructors.length == 1) constructors.toList
+      (if (constructors.length == 1) constructors
       else constructors.filterNot(_.getParameterTypes.map(_.getName).contains(currentType)).sortBy(_.getParameterTypes.length).toList) match {
-        case constructor :: any => (constructor, constructor.getParameterTypes.map(getClassName).map(getConverter(_, mapTypes, splitter)))
+        case constructor :: any => (constructor, constructor.getParameterTypes.map(getClassName).map(getConverter(_, mapTypes, splitter)).toSeq)
         case Nil                => throw new Exception("could not find appropriate constructor")
       }
     }
@@ -168,7 +172,10 @@ class TypeConversions {
       // alternatively we'll take the one and only constructor
       (if (constructors.length == 1) Some(constructors(0))
       else constructors.find(_.getParameterTypes.map(_.getName).toList == childTypes)) match {
-        case Some(constructor) => (constructor, null) // null -> the converter for a recursive type is generated in the function call below  
+        
+        case Some(constructor) => if (!childTypes.exists(_.indexOf(currentType) != -1))
+          (constructor, childTypes.map(getConverter(_, mapTypes, splitter)).toSeq)  
+        else (constructor, null) // null -> the converter for a recursive type is generated in the function call below
         case None              => throw new Exception("could not find appropriate constructor")
       }
     }
@@ -178,9 +185,9 @@ class TypeConversions {
    *
    *  It is suitable for Product (Tuple and case classes) and all other classes that have constructor containing the child types.
    */
-  protected[this] def defaultConverter(currentType: String, childTypes: Array[String], mapTypes: MapTypes, splitter: Splitter): String => Any = {
+  protected[this] def defaultConverter(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter): String => Any = {
 
-    val (constructor, convertersPre) = findDefaultConstructors(currentType: String, childTypes: Array[String], mapTypes: MapTypes, splitter: Splitter)
+    val (constructor, convertersPre) = findDefaultConstructors(currentType, childTypes, mapTypes, splitter)
     params: String =>
       {
         val converters =
@@ -194,7 +201,7 @@ class TypeConversions {
 
   }
 
-  protected[this] def converterImpl(currentType: String, childTypes: Array[String], mapTypes: MapTypes, splitter: Splitter) = {
+  protected[this] def converterImpl(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter) = {
     val names = TypeConversions.creatorFromClassName(splitter.shortNameOf(currentType)) :: TypeConversions.creatorFromClassName(currentType) :: Nil
 
     this.getClass.getMethods.find(m => names.contains(m.getName)) match {
@@ -269,24 +276,26 @@ object TypeConversions {
     converterCaches.getOrCreate(new ConverterCache).getOrElseUpdate((caller, param), createConverter)
   }
 
+  val replacements = Seq(("java.lang.", ""), ("scala.collection.immutable.$colon$colon", "List"), ("scala.collection.immutable.", ""))
+
   /** Caches the name conversion of a class name.
    *
    *  \attention this method is _not_ threadsafe!
    */
   private def getNameOrElseUpdate(clz: String): String =
     nameCaches.getOrCreate(new NameCache).getOrElseUpdate(clz,
-      clz.replace("java.lang.", "").
-        replace("scala.collection.immutable.", "").
-        replace("$colon$colon", "List").
-        replaceAll("\\$.*", "") match {
-          case pkg if (pkg.contains(".")) => {
-            // scala.List -> List, ...
-            if (pkg.startsWith("scala.") && !pkg.substring(6).contains("."))
-              pkg.substring(6)
-            else pkg
-          }
-          case primitive => primitive.capitalize // for java std types - int -> Int, float -> Float...
-        })
+      StringUtils.replaceFirst(clz, replacements) match {
+        case pkg if (pkg.indexOf('.') != -1) => {
+          // scala.List -> List, ...
+          if (pkg.startsWith("scala.") && pkg.indexOf('.', 6) != -1)
+            pkg.substring(6)
+          else pkg
+        }
+        case sub =>
+          val idx = sub.indexOf('$')
+          if (idx == -1) sub.capitalize // for java std types - int -> Int, float -> Float...
+          else sub.substring(0, idx) // name contains a '$' for an inner class -> only take the beginning
+      })
 
   /** Clear the caches explicitly.
    */

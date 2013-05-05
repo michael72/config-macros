@@ -1,7 +1,6 @@
 package org.jaylib.scala.config.json
 
 import org.jaylib.scala.config.convert.TypeConversions
-import scala.reflect.runtime.{ universe => ru }
 import org.jaylib.scala.config.split.Splitter
 import language.existentials
 import scala.collection.mutable.ListBuffer
@@ -31,8 +30,8 @@ class JsonConversions extends TypeConversions {
   }
 
 
-  protected[this] override def defaultConverter(currentType: String, childTypes: Array[String], mapTypes: MapTypes, splitter: Splitter): String => Any = {
-    val (constructor, convertersPre) = findDefaultConstructors(currentType: String, childTypes: Array[String], mapTypes: MapTypes, splitter: Splitter)
+  protected[this] override def defaultConverter(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter): String => Any = {
+    val (constructor, convertersPre) = findDefaultConstructors(currentType, childTypes, mapTypes, splitter)
     params: String => {
       val converters =
         if (convertersPre != null) convertersPre
@@ -44,7 +43,7 @@ class JsonConversions extends TypeConversions {
         // TODO really sort it according to names!
         arr.mkString(",")
       }
-      val initParams = (converters, splitter(sortedParams).padTo(converters.length, "")).zipped.map(_(_)).toArray
+      val initParams = (converters, splitter(sortedParams).toSeq.padTo(converters.length, "")).zipped.map(_(_)).toArray
       constructor.newInstance(initParams.asInstanceOf[Array[Object]]: _*)
     }
   }
