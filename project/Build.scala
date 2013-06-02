@@ -3,9 +3,37 @@ import Keys._
 
 object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq (
-    organization  := "www.jaylib.org",
-    version       := "1.0.0",
-    scalaVersion  := "2.10.1"
+    organization  := "org.jaylib.scala.config",
+    version       := "1.0.0-SNAPSHOT",
+    scalaVersion  := "2.10.1",
+    // Sonatype OSS deployment
+    publishTo <<= version { (v: String) =>
+      val nexus = "https://oss.sonatype.org/"
+      if (v.trim.endsWith("SNAPSHOT"))
+        Some("snapshots" at nexus + "content/repositories/snapshots")
+      else
+        Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+    },
+    //credentials   += Credentials(Path.userHome / ".ivy2" / ".credentials"),
+
+    publishMavenStyle := true,
+    publishArtifact in Test := false,
+    pomIncludeRepository := { _ => false },
+    pomExtra := (
+      <scm>
+        <url>git@github.com:michael72/config-macros.git</url>
+        <connection>scm:git:git@github.com:michael72/config-macros.git</connection>
+      </scm>
+        <developers>
+          <developer>
+            <id>michael72</id>
+            <name>Michael Schulte</name>
+			<email>michael.schulte@gmx.org</email>
+            <url>http://www.mischu.de</url>
+          </developer>
+        </developers>),
+    licenses      := ("Apache2", new java.net.URL("http://www.apache.org/licenses/LICENSE-2.0.txt")) :: Nil,
+    homepage      := Some(new java.net.URL("http://www.jaylib.org"))
   )
 }
 

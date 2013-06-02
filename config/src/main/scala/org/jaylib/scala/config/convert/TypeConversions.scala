@@ -13,46 +13,43 @@ import scala.annotation.tailrec
 /** Converts a type to its string representation and back.
  *  For creation of the type from a string the `create_...` methods are used.
  *  If a new type `NewType` shall be supported, the TypeConversions has to be extended with the `create_NewType(str: String)` method.
- *  The conversion to a string is simply done by calling the obect's toString method, excepting the String-type itself, which is surrounded by quotes.
- *  If a new type (or an existing one) shall change the conversion to a string, the toString(Any)-method has to be overwritten.
+ *  The conversion to a string is simply done by calling the object's toString method - Strings themselves are surrounded by quotes.
+ *  If a new type (or an existing one) shall change the conversion to a string, the appendString(Any, StringBuilder)-method has to be overwritten.
  *
  *  Example: extend TypeConversions for `java.io.File`, where its String representation is mapped to the file's absolute path
  *
  *  {{{
- *  val conversions = new TypeConversions {
- *  def create_File(absolutePath: String) = new java.io.File(absolutePath)
- *  override def toString(any: Any) = any match {
- *  case file: java.io.File => file.getAbsolutePath
- *  case other              => super.toString(other)
- *  }
- *  }
+    val config = ConfigMacros.wrap(classOf[Config], props.getProperty, props.setProperty, new TypeConversions {
+      def create_File(filename: String) = new File(filename)
+      override def appendString(any: Any, buf: StringBuilder) {
+        any match {
+          case file: File => buf.append(file.getAbsolutePath)
+          case any        => super.appendString(any, buf)
+        }
+      }
+    })
  *  }}}
  */
 class TypeConversions {
   private[this] val internalBuf = new StringBuilder
-  def create_Int(str: String) = {
-    str.toInt
-  }
+  def create_Int(str: String) = str.toInt
   def create_Float(str: String) = str.toFloat
-  def create_Double(str: String) = {
-    str.toDouble
-  }
+  def create_Double(str: String) = str.toDouble
   def create_Boolean(str: String) = str.toBoolean
+  def create_Byte(str: String) = str.toByte
+  def create_Short(str: String) = str.toShort
+  def create_Long(str: String) = str.toLong
   def create_String(str: String) = {
     val ret = StringUtils.replaceAll(str, "\\\"", "\"") // replace inner \" with "
     if (ret.startsWith("\""))
       ret.substring(1, ret.length - 1) // remove outer "" 
     else ret
   }
-  def create_Byte(str: String) = str.toByte
-  def create_Short(str: String) = str.toShort
-  def create_Long(str: String) = str.toLong
 
   /** Default implementation of toString for any given type using the type's toString method.
-   *  For more refined toString operations, this method should be refined with the type as parameter and
-   *  a specialized string conversion.
+   *  This method is used by appendString. 
+   *  To support own type conversions override appendString.
    */
-
   final def toString(any: Any) = {
     appendString(any, internalBuf)
     val ret = internalBuf.toString
@@ -60,12 +57,19 @@ class TypeConversions {
     ret
   }
 
+  /** Converts the given argument to a string and appends it to the given StringBuilder.
+   *  This method may be overridden to provide an own conversion to a string. See the example 
+   *  in the class comment.
+   *  @param any the object to convert
+   *  @param buf the buffer to append the converted object to
+   */
   def appendString(any: Any, buf: StringBuilder): Unit = any match {
     case str: String =>
       buf.append('\"').append(StringUtils.replaceAll(str, "\"", "\\\"")).append('\"').toString
     case map: Map[_, _]         => mapToString(map, buf)
     case tr: Traversable[_]     => traversableToString(tr, buf)
     case pr: Product            => productToString(pr, buf)
+    // use of append for basic types is more efficient than boxing and conversion to String
     case i: java.lang.Integer   => buf.append(i.intValue)
     case b: java.lang.Boolean   => buf.append(b.booleanValue)
     case f: java.lang.Float     => buf.append(f.floatValue)
@@ -77,6 +81,11 @@ class TypeConversions {
     case _                      => buf.append(any)
   }
 
+  /** Helper method to append to the mkString of an Iterator directly to a buffer.
+   *  @param prefix the prefix to append first to the buffer
+   *  @param it the iterator where each element and appended to the buffer is separated by " ," .
+   *  @param buf the buffer to append the data to. 
+   */
   protected[this] def mkString(prefix: String, it: Iterator[_], buf: StringBuilder) {
     @tailrec
     def mkStringPart(it: Iterator[_]) {
@@ -92,6 +101,14 @@ class TypeConversions {
     buf.append(')')
   }
 
+  /**
+   * Appends the String representation of a map to a buffer.
+   * The String representation contains the String representation of each key/value-pair, 
+   * separated by an arrow "->".
+   * 
+   * @param map the map to convert
+   * @param buf the buffer to append the result to.
+   */
   def mapToString(map: Map[_, _], buf: StringBuilder) {
     @tailrec
     def mkStringPart(it: Iterator[(_, _)], buf: StringBuilder) {
@@ -111,15 +128,37 @@ class TypeConversions {
     buf.append(')')
   }
 
+  /**
+   * Appends each element of a Traversable to a buffer.
+   * @param tr the traversable containing the elements
+   * @param buf the buffer to append to
+   */
   def traversableToString(tr: Traversable[_], buf: StringBuilder) {
     mkString(getClassName(tr.getClass), tr.toIterator, buf)
   }
 
+  /**
+   * Appends the contents of a product to a buffer.
+   * @param pr the product
+   * @param buf the buffer to append the product elements to.
+   */
   def productToString(pr: Product, buf: StringBuilder) {
     val isTuple = pr.getClass.getName.startsWith("scala.Tuple")
     mkString(if (isTuple) "" else pr.productPrefix, pr.productIterator, buf)
   }
 
+  /**
+   * Tries to convert the given parameters for a given type or types.
+   * Example:
+   * {{{
+   * x: Int = tryConvert("x", "Int", splitter)("23") // x = 23
+   * }}}
+   * @param the name of the parameter (variable name) that is converted. This is used for error output when the conversion fails.
+   * @param types the types or classnames that the parameters should be converted to.
+   * @param splitter the splitter to seperate the parameter types.
+   * @param params the parameters to convert. 
+   * @throws ConversionException if the conversion fails.
+   */
   def tryConvert(name: String, types: String, splitter: Splitter)(params: String): Any = {
     try {
       convertAny(types, splitter)(Param(params))
@@ -199,12 +238,12 @@ class TypeConversions {
       case "List" =>
         params: Param => params.call(converter).toList
 
-        // convert each element of the split string-list
-        case vect if (vect == "Vector" || vect == "Seq") =>
+      // convert each element of the split string-list
+      case vect if (vect == "Vector" || vect == "Seq") =>
         params: Param => params.call(converter).toVector
 
-        // convert each element of the split string-list
-        case "Set" =>
+      // convert each element of the split string-list
+      case "Set" =>
         params: Param => params.call(converter).toSet
     }
 
