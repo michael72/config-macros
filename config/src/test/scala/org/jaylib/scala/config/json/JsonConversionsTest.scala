@@ -4,11 +4,11 @@ import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import org.jaylib.scala.config.split.DefaultSplitter
 import org.scalatest.GivenWhenThen
+import org.jaylib.scala.config.split.Param
 
 class JsonConversionsTest extends FlatSpec with ShouldMatchers with GivenWhenThen {
 
   val conv = new JsonConversions
-
   "JsonConversions" should "convert a simple case class" in {
     import JsonConversionsTest.Simple
     conv.toString(new Simple(10)) should be("{\n  x: 10\n}")
@@ -16,7 +16,7 @@ class JsonConversionsTest extends FlatSpec with ShouldMatchers with GivenWhenThe
 
   it should "convert back the simple object" in {
     import JsonConversionsTest.Simple
-    conv.convertAny(classOf[Simple].getName + "(Int)", new DefaultSplitter())("{ x: 42 }") should be (Simple(42))
+    conv.convertAny(classOf[Simple].getName + "(Int)", new DefaultSplitter())(Param("{ x: 42 }")) should be (Simple(42))
   }
 
   it should "convert a more complex example to JSON" in {

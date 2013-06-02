@@ -6,6 +6,9 @@ import scala.Array.canBuildFrom
 import org.jaylib.scala.config.split.Splitter
 import language.existentials
 import org.jaylib.scala.config.StringUtils
+import org.jaylib.scala.config.split.Param
+import scala.collection.mutable.ListBuffer
+import scala.annotation.tailrec
 
 /** Converts a type to its string representation and back.
  *  For creation of the type from a string the `create_...` methods are used.
@@ -26,9 +29,14 @@ import org.jaylib.scala.config.StringUtils
  *  }}}
  */
 class TypeConversions {
-  def create_Int(str: String) = str.toInt
+  private[this] val internalBuf = new StringBuilder
+  def create_Int(str: String) = {
+    str.toInt
+  }
   def create_Float(str: String) = str.toFloat
-  def create_Double(str: String) = str.toDouble
+  def create_Double(str: String) = {
+    str.toDouble
+  }
   def create_Boolean(str: String) = str.toBoolean
   def create_String(str: String) = {
     val ret = StringUtils.replaceAll(str, "\\\"", "\"") // replace inner \" with "
@@ -44,28 +52,77 @@ class TypeConversions {
    *  For more refined toString operations, this method should be refined with the type as parameter and
    *  a specialized string conversion.
    */
-  def toString(any: Any): String = any match {
-    case str: String =>
-      new StringBuilder(str.length+2).append('\"').append(StringUtils.replaceAll(str, "\"", "\\\"")).append('\"').toString
-    case map: Map[_, _]     => mapToString(map)
-    case tr: Traversable[_] => tr.map(toString(_)).mkString(getClassName(tr.getClass) + "(", ", ", ")")
-    case pr: Product        => productToString(pr)
-    case _                  => any.toString
+
+  final def toString(any: Any) = {
+    appendString(any, internalBuf)
+    val ret = internalBuf.toString
+    internalBuf.setLength(0)
+    ret
   }
 
-  def mapToString(map: Map[_, _]): String =
-    map.iterator.map { case (key, value) =>
-      new StringBuilder().append(toString(key)).append(" -> ").append(toString(value))}.mkString(getClassName(map.getClass) + "(", ", ", ")")
+  def appendString(any: Any, buf: StringBuilder): Unit = any match {
+    case str: String =>
+      buf.append('\"').append(StringUtils.replaceAll(str, "\"", "\\\"")).append('\"').toString
+    case map: Map[_, _]         => mapToString(map, buf)
+    case tr: Traversable[_]     => traversableToString(tr, buf)
+    case pr: Product            => productToString(pr, buf)
+    case i: java.lang.Integer   => buf.append(i.intValue)
+    case b: java.lang.Boolean   => buf.append(b.booleanValue)
+    case f: java.lang.Float     => buf.append(f.floatValue)
+    case l: java.lang.Long      => buf.append(l.longValue)
+    case d: java.lang.Double    => buf.append(d.doubleValue)
+    case s: java.lang.Short     => buf.append(s.shortValue)
+    case b: java.lang.Byte      => buf.append(b.byteValue)
+    case c: java.lang.Character => buf.append(c.charValue)
+    case _                      => buf.append(any)
+  }
 
-  def productToString(pr: Product): String = {
+  protected[this] def mkString(prefix: String, it: Iterator[_], buf: StringBuilder) {
+    @tailrec
+    def mkStringPart(it: Iterator[_]) {
+      appendString(it.next, buf)
+      if (it.hasNext) {
+        buf.append(", ")
+        mkStringPart(it)
+      }
+    }
+    buf.append(prefix).append('(')
+    if (it.hasNext)
+      mkStringPart(it)
+    buf.append(')')
+  }
+
+  def mapToString(map: Map[_, _], buf: StringBuilder) {
+    @tailrec
+    def mkStringPart(it: Iterator[(_, _)], buf: StringBuilder) {
+      val keyValue = it.next
+      appendString(keyValue._1, buf)
+      buf.append(" -> ")
+      appendString(keyValue._2, buf)
+      if (it.hasNext) {
+        buf.append(", ")
+        mkStringPart(it, buf)
+      }
+    }
+    buf.append(getClassName(map.getClass)).append('(')
+    val it = map.iterator
+    if (it.hasNext)
+      mkStringPart(it, buf)
+    buf.append(')')
+  }
+
+  def traversableToString(tr: Traversable[_], buf: StringBuilder) {
+    mkString(getClassName(tr.getClass), tr.toIterator, buf)
+  }
+
+  def productToString(pr: Product, buf: StringBuilder) {
     val isTuple = pr.getClass.getName.startsWith("scala.Tuple")
-    val prefix = if (isTuple) "" else pr.productPrefix
-    pr.productIterator.map(toString(_)).mkString(prefix + "(", ", ", ")")
+    mkString(if (isTuple) "" else pr.productPrefix, pr.productIterator, buf)
   }
 
   def tryConvert(name: String, types: String, splitter: Splitter)(params: String): Any = {
     try {
-      convertAny(types, splitter)(params)
+      convertAny(types, splitter)(Param(params))
     }
     catch {
       case t: Throwable =>
@@ -78,11 +135,11 @@ class TypeConversions {
   /** Tries to convert a given type string with parameters to the result.
    *  The result has to be casted to the appropriate type in the calling method.
    */
-  def convertAny(types: String, splitter: Splitter)(params: String): Any = {
+  def convertAny(types: String, splitter: Splitter)(params: Param): Any = {
     getConverter(types, new MapTypes(), splitter)(params)
   }
 
-  protected[this] def getConverter(types: String, mapTypes: MapTypes, splitter: Splitter): String => Any = {
+  protected[this] def getConverter(types: String, mapTypes: MapTypes, splitter: Splitter): Param => Any = {
     val (currentType, childTypes) = splitter.splitParamType(types)
     val genType = if (types.length > currentType.length && types.charAt(currentType.length) == '[') types else currentType
     // get the stored type conversion or else provide the conversion function
@@ -121,33 +178,34 @@ class TypeConversions {
     }
   }
 
-  protected[this] def mapConverter(childTypes: Iterable[String], mapTypes: MapTypes, splitter: Splitter): String => Map[_, _] = {
+  protected[this] def mapConverter(childTypes: Iterable[String], mapTypes: MapTypes, splitter: Splitter): Param => Map[_, _] = {
     val Seq(keyConverter, valueConverter) = childTypes.map(getConverter(_, mapTypes, splitter))
-    params: String =>
-      splitter(params).map { kv =>
-        val Array(key, value) = kv.split("->")
-        // convert the key to the key-type and the value to the value-type
-        // create a map of keys and values afterwards
-        (keyConverter(key.trim), valueConverter(value.trim))
+    params: Param =>
+      params.children.map {
+        param =>
+          val Array(key, value) = param.toString.split("->")
+          // convert the key to the key-type and the value to the value-type
+          // create a map of keys and values afterwards
+          (keyConverter(Param(key.trim)), valueConverter(Param(value.trim)))
       }.toMap
   }
 
-  protected[this] def sequenceConverter(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter): String => Iterable[_] = {
+  protected[this] def sequenceConverter(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter): Param => Iterable[_] = {
     val converter = getConverter(childTypes(0), mapTypes, splitter)
 
     currentType match {
 
       // convert each element of the split string-list
       case "List" =>
-        params: String => splitter(params).map(converter).toList
+        params: Param => params.call(converter).toList
 
         // convert each element of the split string-list
         case vect if (vect == "Vector" || vect == "Seq") =>
-        params: String => splitter(params).map(converter).toVector
+        params: Param => params.call(converter).toVector
 
         // convert each element of the split string-list
         case "Set" =>
-        params: String => splitter(params).map(converter).toSet
+        params: Param => params.call(converter).toSet
     }
 
   }
@@ -171,11 +229,11 @@ class TypeConversions {
       // alternatively we'll take the one and only constructor
       (if (constructors.length == 1) Some(constructors(0))
       else constructors.find(_.getParameterTypes.map(_.getName).toList == childTypes)) match {
-        
+
         case Some(constructor) => if (!childTypes.exists(_.indexOf(currentType) != -1))
-          (constructor, childTypes.map(getConverter(_, mapTypes, splitter)).toSeq)  
+          (constructor, childTypes.map(getConverter(_, mapTypes, splitter)).toSeq)
         else (constructor, null) // null -> the converter for a recursive type is generated in the function call below
-        case None              => throw new Exception("could not find appropriate constructor")
+        case None => throw new Exception("could not find appropriate constructor")
       }
     }
   }
@@ -184,18 +242,19 @@ class TypeConversions {
    *
    *  It is suitable for Product (Tuple and case classes) and all other classes that have constructor containing the child types.
    */
-  protected[this] def defaultConverter(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter): String => Any = {
+  protected[this] def defaultConverter(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter): Param => Any = {
 
     val (constructor, convertersPre) = findDefaultConstructors(currentType, childTypes, mapTypes, splitter)
-    params: String =>
+    params: Param =>
       {
         val converters =
           if (convertersPre != null) convertersPre
-          else childTypes.map(getConverter(_, mapTypes, splitter)) // recursive type => generation of sub-converters can only be done here
+          else {
+            if (childTypes.isEmpty) Nil
+            else childTypes.map(getConverter(_, mapTypes, splitter)) // recursive type => generation of sub-converters can only be done here
+          }
         // the params are padded with empty strings when not enough parameters were provided (this also supports empty lists as initial default value)
-        // the zipped.map(_(_)) calls the splitted parameters on each converter resulting in the real init parameters used for the constructor
-        val initParams = (converters, splitter(params).padTo(converters.length, "")).zipped.map(_(_)).toArray
-        constructor.newInstance(initParams.asInstanceOf[Array[Object]]: _*)
+        constructor.newInstance(params.call(converters).asInstanceOf[Array[Object]]: _*)
       }
 
   }
@@ -206,7 +265,8 @@ class TypeConversions {
     this.getClass.getMethods.find(m => names.contains(m.getName)) match {
       case Some(method) => {
         // explicit create_method is preferred
-        params: String => method.invoke(this, params)
+        params: Param =>
+          method.invoke(this, params.toString)
       }
       case None => {
         // no create method found: try some introspection
@@ -260,7 +320,7 @@ object TypeConversions {
     def get = ref.get
   }
   private[this]type NameCache = HashMap[String, String]
-  private[this]type ConverterCache = HashMap[(Class[_], String), String => Any]
+  private[this]type ConverterCache = HashMap[(Class[_], String), Param => Any]
   private[this] val nameCaches = new Cache[NameCache]
   private[this] val converterCaches = new Cache[ConverterCache]
 
@@ -271,7 +331,7 @@ object TypeConversions {
    *
    *  \attention this method is _not_ threadsafe!
    */
-  private def getOrElseUpdate(caller: Class[_], param: String, createConverter: => String => Any): String => Any = {
+  private def getOrElseUpdate(caller: Class[_], param: String, createConverter: => Param => Any): Param => Any = {
     converterCaches.getOrCreate(new ConverterCache).getOrElseUpdate((caller, param), createConverter)
   }
 

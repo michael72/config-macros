@@ -43,11 +43,9 @@ object StringUtils {
             buf.append(input.substring(oldIndex))
           index = input.length
         case idx =>
-          if (buf == null) {
+          if (buf == null) 
             buf = new StringBuilder(input.length - oldStr.length + newStr.length + 8)
-          }
-          buf.append(input.substring(oldIndex, index))
-          buf.append(newStr)
+          buf.append(input.substring(oldIndex, index)).append(newStr)
       }
       oldIndex = index + oldStr.length
     }

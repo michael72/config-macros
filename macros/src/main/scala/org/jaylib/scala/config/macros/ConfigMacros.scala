@@ -124,7 +124,7 @@ object ConfigMacros {
          */
         def errorUnsupported(rtype: String, shortName: String, addMsg: String) {
           val creator = TypeConversions.creatorFromClassName(shortName)
-          c.warning(m.pos, s"Unsupported type ${rtype}. ${addMsg} provide the method ${creator}(String): ${shortName} in the TypeConversions implementation and optionally override toString(Any): String")
+          c.warning(m.pos, s"Unsupported type ${rtype}. ${addMsg} provide the method ${creator}(String): ${shortName} in the TypeConversions implementation and optionally override appendString(Any, StringBuilder)")
           unsupportedTypes += rtype
         }
         val name = m.name.decoded

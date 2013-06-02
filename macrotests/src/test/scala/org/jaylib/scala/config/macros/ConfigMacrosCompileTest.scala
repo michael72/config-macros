@@ -42,7 +42,7 @@ class ConfigMacrosCompileTest extends FlatSpec with ShouldMatchers with CanVerb 
     And("give a hint to add an annotation to ignore the warning and try the first constructor")
     res should include("Please add the @autoConstruct annotation to file")
     And("give a hint to provide the appropriate conversion method(s)")
-    res should include("provide the method create_File(String): File in the TypeConversions implementation and optionally override toString(Any): String")
+    res should include("provide the method create_File(String): File in the TypeConversions implementation and optionally override appendString(Any, StringBuilder)")
   }
 
   it should "issue a compile warning when recursive types are used" in {
@@ -59,7 +59,7 @@ class ConfigMacrosCompileTest extends FlatSpec with ShouldMatchers with CanVerb 
     Then("the interpreter should issue an warning for unsupported type Recursive")
     res should include("warning: Unsupported type " + getClass.getPackage.getName + ".ConfigMacrosCompileTest.Recursive")
     And("give a hint to provide the appropriate conversion method(s)")
-    res should include("provide the method create_Recursive(String): Recursive in the TypeConversions implementation and optionally override toString(Any): String")
+    res should include("provide the method create_Recursive(String): Recursive in the TypeConversions implementation and optionally override appendString(Any, StringBuilder)")
     And("do not give a hint to add an annotation to ignore the warning and try the first constructor - this cannot be handled automatically.")
     res should not include ("@autoConstruct")
   }

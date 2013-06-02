@@ -1,7 +1,7 @@
 package org.jaylib.scala.config.split
 
 import scala.annotation.tailrec
-import scala.collection.mutable.{ ListBuffer}
+import scala.collection.mutable.{ ListBuffer }
 import scala.collection.immutable.Stack
 
 /** Default implementation of the splitter that works on Strings where the items are separated by comma.
@@ -12,18 +12,24 @@ class DefaultSplitter extends Splitter {
    *  Example:
    *  "Items(1,(4,5),6,(7,8))" yields the result Tuple: ("Items", Array("1", "(4,5)", "6", "(7,8)"))
    */
-  override def splitParamType(str: String) : (String, Seq[String]) = {
+  override def splitParamType(str: String): (String, Seq[String]) = {
     val s = str.trim
-    val idxFirstComma = { val f = findNext(s, DefaultSplitter.SEARCH, 0); if (f == -1) s.length else f }
-    val idxCaseBracket = s.indexOf('(')
-    val idxGenBracket = s.indexOf('[')
-    val idxFirstBracket = if (idxGenBracket != -1 && (idxGenBracket < idxCaseBracket || idxCaseBracket == -1)) idxGenBracket else idxCaseBracket
-    if (idxFirstBracket != -1 && idxFirstBracket < idxFirstComma) {
+    val idxFirstBracket = findFirstBracket(str, 0)
+    if (idxFirstBracket != -1) {
       val arr = buildSeqFromString(s.substring(idxFirstBracket + 1, s.length - 1))
       (s.substring(0, idxFirstBracket), arr)
     }
     else // no brackets found - we only have the type
       (s, Nil)
+  }
+  
+  @tailrec
+  private[this] def findFirstBracket(str: String, idx: Int) : Int = {
+    str.charAt(idx) match {
+      case bracket if (bracket == '(' || bracket == '[') => idx
+      case ',' => -1
+      case _ => if (idx == str.length-1) -1 else findFirstBracket(str, idx+1)
+    }
   }
 
   /** For an input String Type[Params,...,Params] returns the [Params,...,Params] as Array[String].
@@ -31,8 +37,10 @@ class DefaultSplitter extends Splitter {
    *  Example:
    *  "Items((1,2),(4,5),(6,7))" yields the result Array: Array("(1,2)", "(4,5)", "(6,7)")
    */
-  override def apply(str: String) = splitParamsImpl(str)
+  @inline
+  override def split(str: String) = buildSeqFromString(DefaultSplitter.unpacked(str))
 
+  
   /** Shortens the input classname by its packages.
    *  Example:
    *  "java.io.File" yields "File" and
@@ -44,7 +52,7 @@ class DefaultSplitter extends Splitter {
     clzName.foreach {
       _ match {
         case c if (c > ']' && c < '{') || (c > '.' && c < '[') =>
-        	part.append(c)
+          part.append(c)
         case '.' => part.setLength(0) // take only the part after the last dot
         case separator if (DefaultSplitter.NAME_SEPARATORS.contains(separator)) =>
           buf.append(part.toString)
@@ -60,31 +68,7 @@ class DefaultSplitter extends Splitter {
     buf.append(part.toString).toString // add the rest of the part to the return value
   }
 
-  private[this] def splitParamsImpl(str: String) = {
-    @tailrec
-    def findLast(str: String, index: Int): Option[Char] = {
-      if (index == -1) None
-      else {
-        str.charAt(index) match {
-          case space if Character.isWhitespace(space) => findLast(str, index - 1)
-          case c => Some(c)
-        }
-      }
-    }
-    val strUnpacked = findLast(str, str.length - 1) match {
-      case Some(closing) if DefaultSplitter.CLOSING_BRACKETS.contains(closing) =>
-        val idxBracket = str.indexOf(DefaultSplitter.OPENING_BRACKETS(DefaultSplitter.CLOSING_BRACKETS.indexOf(closing)))
-        if (str.lastIndexOf(',', idxBracket) == -1) // no parameters before the bracket -> unpack the brackets
-          str.substring(idxBracket + 1, str.lastIndexOf(closing))
-        else
-          str
-      case _ => str
-    }
-
-    buildSeqFromString(strUnpacked)
-  }
-
-  private[this] def buildSeqFromString(strUnpacked: String) : Seq[String] = {
+  private[this] def buildSeqFromString(strUnpacked: String): Seq[String] = {
     if (!strUnpacked.isEmpty) {
       val lb = new ListBuffer[String]()
       buildSeq(strUnpacked, 0, lb)
@@ -101,26 +85,26 @@ class DefaultSplitter extends Splitter {
    *  the first is in a pair of extra brackets.
    */
   @tailrec
-  private [this] def findNext(str: String, search: Stack[Char], idx: Int): Int = {
+  private[this] def findNext(str: String, search: Stack[Char], idx: Int): Int = {
     if (idx < str.length) {
       str.charAt(idx) match {
-    	// performance hack with ASCII table - first work on the characters that are not searched
+        // performance hack with ASCII table - first work on the characters that are not searched
         // searched characters (up to now) are: comma, the brackets, quotes and backspace
         case c if (c > ']' && c < '{') || (c > ',' && c < '[') || (c < '\"') =>
-        	findNext(str, search, idx + 1)
+          findNext(str, search, idx + 1)
         case found if (found == search.top) =>
           val newSearch = search.pop
           if (newSearch.isEmpty) idx // the initially searched item is found -> return the index
           else findNext(str, newSearch, idx + 1) // only closing bracket or quote was found -> go on searching
         case quote if (quote == '"' || quote == '\'') =>
-          findNext(str, search.push(quote), idx + 1)  // search next fitting quote
+          findNext(str, search.push(quote), idx + 1) // search next fitting quote
         case '\\' => // escape - skip next character
           findNext(str, search, idx + 2)
         case bracket if (bracket == '(' || bracket == '[' || bracket == '{') =>
           findNext(str, search.push(DefaultSplitter.CLOSING_BRACKETS(DefaultSplitter.OPENING_BRACKETS.indexOf(bracket))), idx + 1) // search closing bracket*/
         case closing if (closing == ')' || closing == ']' || closing == '}') =>
           throw new IllegalArgumentException("unmatched closing bracket in " + str.substring(0, idx) + " /*--->*/ " + str.substring(idx) + ", search is " + (if (search.isEmpty) "empty" else search.toList.mkString("[", ",", "]")))
-        case _  =>
+        case _ =>
           findNext(str, search, idx + 1)
       }
     }
@@ -135,7 +119,7 @@ class DefaultSplitter extends Splitter {
   /** Builds the ListBuffer in res with the parameters separated by ','.
    */
   @tailrec
-  private [this] def buildSeq(str: String, startIdx: Int, res: ListBuffer[String]) {
+  private[this] def buildSeq(str: String, startIdx: Int, res: ListBuffer[String]) {
     findNext(str, DefaultSplitter.SEARCH, startIdx) match {
       case -1 => res += str.substring(startIdx).trim // no further entries found - done.
       case idx =>
@@ -151,4 +135,39 @@ object DefaultSplitter {
   val CLOSING_BRACKETS = ")]}".toSeq
   val BRACKETS = OPENING_BRACKETS ++ CLOSING_BRACKETS
   val SEARCH = Stack(',')
+
+  /**
+   * Search for the last non-whitespace character in a String.
+   * @param str the String to search in
+   * @param index the position to start searching on the right side (usually str.length - 1)
+   * @return None, when the (trimmed) String is empty, otherwise the Character in an Option 
+   */
+  @tailrec
+  def findLast(str: String, index: Int): Option[Char] = {
+    if (index == -1) None
+    else {
+      str.charAt(index) match {
+        case space if Character.isWhitespace(space) => findLast(str, index - 1)
+        case c                                      => Some(c)
+      }
+    }
+  }
+  /**
+   * Unpacks an expression String with brackets.
+   * Example unpacked("fun(1,2,3)") will return "1,2,3", but
+   * unpacked("x, fun(1,2,3)") will return the same String (the String was already unpacked).
+   * @param str string to unpack
+   * @return unpacked string
+   */
+  def unpacked(str: String) = findLast(str, str.length - 1) match {
+    // check if the expression ends with a closing bracket - if so (and no parameter is preceeding): unpack the string
+    case Some(closing) if DefaultSplitter.CLOSING_BRACKETS.contains(closing) =>
+      val idxBracket = str.indexOf(DefaultSplitter.OPENING_BRACKETS(DefaultSplitter.CLOSING_BRACKETS.indexOf(closing)))
+      if (str.lastIndexOf(',', idxBracket) == -1) // no parameters before the bracket -> unpack the brackets
+        str.substring(idxBracket + 1, str.lastIndexOf(closing))
+      else
+        str
+    case _ => str
+  }
+
 }

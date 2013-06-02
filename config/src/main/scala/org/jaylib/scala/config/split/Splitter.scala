@@ -17,7 +17,7 @@ trait Splitter {
    * Example:
    * "Items((1,2),(4,5),(6,7))" yields the result Array: Array("(1,2)", "(4,5)", "(6,7)")
    */
-  def apply(str: String) : Seq[String]
+  def split(str: String) : Seq[String]
   /**
    * Shortens the input classname by its packages.
    * Example:

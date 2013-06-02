@@ -10,17 +10,9 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.mutable.Leaf
 import org.jaylib.scala.config.convert.TypeConversions
 import org.jaylib.scala.config.split.DefaultSplitter
+import org.jaylib.scala.config.split.Param
 
 class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with GivenWhenThen {
-  case class Leaf (weight: Char, freq: Int)
-  def makeOrderedLeafList(freqs: List[(Char, Int)]): List[Leaf] = {
-    val buff = ListBuffer[Leaf]();
-    for(u<-freqs) {
-       val v = new Leaf(u._1, u._2)
-       buff += v
-    }
-    buff.toList.sortBy(_.weight) //<= offending line
-  }
   "ConfigMacros" should "work on primitive types" in {
     Given("a pure trait with vars of primitive types")
     trait Prim {
@@ -68,9 +60,9 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     new TypeConversions().toString(config.str) should be(""""\"test,1,2\""""")
     map("str") should be(""""\"test,1,2\""""")
 
-    config.list should be(List("1", "\"2,3\"", "4"))
+    config.list should be(List("1", "2,3", "4"))
     config.list ::= "(4,\"5,6\")"
-    map("list") should be("""List("(4,\"5,6\")", "1", "\"2,3\"", "4")""")
+    map("list") should be("""List("(4,\"5,6\")", "1", "2,3", "4")""")
   }
 
   it should "work on list types" in {
@@ -157,6 +149,7 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     config.elemInnerListCase should be (InnerListCaseXX("Hugo", InnerList(2, List("one", "two"))))
   }
   
+  
   it should "work on complex nested generic structures however when the creator is provided" in {
     import ConfigMacrosTest._
 
@@ -170,9 +163,10 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     val splitter = new DefaultSplitter
     val ownConverter = new TypeConversions {
       def create_InnerListCaseXX(content: String) = {
-        val params = splitter(content)
-        val innerParams = splitter(params(1))
-        InnerListCaseXX(create_String(params(0)), InnerList(innerParams(0).toInt, splitter(innerParams(1)).map(create_String).toList))
+        val params = Param(content)
+        val innerParams = params.children(1)
+        InnerListCaseXX(create_String(params.children(0).toString), 
+            InnerList(innerParams.children(0).part.toInt, innerParams.children(1).children.map(c => create_String(c.part)).toList))
       }
     }
     When("the trait is wrapped as config using the individual converter")
@@ -189,9 +183,11 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     }
     val conversions = new TypeConversions {
       def create_File(filename: String) = new java.io.File(filename)
-      override def toString(any: Any) = any match {
-        case file: java.io.File => file.getAbsolutePath
-        case any                => super.toString(any)
+      override def appendString(any: Any, buf: StringBuilder) {
+        any match {
+	        case file: java.io.File => buf.append(file.getAbsolutePath)
+	        case any                => super.appendString(any, buf)
+        }
       }
     }
     val map = HashMap[String, String]() ++ Map(
@@ -206,7 +202,6 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     Then("the mapped string should contain the current dir")
     map("files") should be(s"List(${new java.io.File("").getAbsolutePath})")
   }
-  
 
   it should "work on on recursive types" in {
     import ConfigMacrosTest.RecursiveClz
