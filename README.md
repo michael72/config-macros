@@ -61,12 +61,13 @@ Then we can use [ConfigMacros](https://github.com/michael72/config-macros/blob/m
 
     val config = ConfigMacros.wrap(classOf[Config], props.getProperty, props.setProperty, new TypeConversions {
       def create_File(filename: String) = new File(filename)
-      override def toString(any: Any) = any match {
-        case file: File => file.getAbsolutePath
-        case any => super.toString(any)
+      override def appendString(any: Any, buf: StringBuilder) {
+        any match {
+          case file: File => buf.append(file.getAbsolutePath)
+          case any        => super.appendString(any, buf)
+        }
       }
     })
-
 
 Now the config can be used as described in the code at the beginning.
 
