@@ -5,13 +5,27 @@ import scala.collection.mutable.Stack
 import org.jaylib.scala.config.convert.ConversionException
 import scala.annotation.tailrec
 
+/** Holds hierarchical and recursive parameters.
+ *
+ *  {{{
+ *  Param("List(1,2,3)")
+ *  Param(part="List", children=Param(part="1")::Param(part="2")::Param(part="3"))
+ *  }}}
+ *
+ */
 final class Param(init: String, origChildren: Seq[Param] = Nil) {
+  /** The top part of the current parameter.
+   */
   val part = Param.unpackString(init)
+  /** The children parameters needed for the constructor parameters of the current type.
+   */
   val children: Seq[Param] =
     if (origChildren.length > 1 || (!origChildren.isEmpty && !(origChildren(0).children.isEmpty && origChildren(0).part.isEmpty())))
       origChildren
     else Nil
 
+  /** Converts the children of this parameter given a converter to a list of converted values.
+   */
   def call(converter: Param => Any): Seq[Any] = {
     val ret = ListBuffer[Any]()
     val it = children.iterator
@@ -20,12 +34,17 @@ final class Param(init: String, origChildren: Seq[Param] = Nil) {
     }
     ret
   }
+  /** Converts a sequence of parameters to a resulting array
+   *  which can be used as constructor arguments for the
+   *  surrounding object.
+   */
   def call(converters: Seq[Param => Any]): Array[Any] = {
     val ret = new Array[Any](converters.length)
     val it = converters.iterator
+    val childIt = children.iterator
     var idx = 0
-    while (idx < children.length) {
-      ret(idx) = it.next()(children(idx))
+    while (childIt.hasNext) {
+      ret(idx) = it.next()(childIt.next)
       idx += 1
     }
     while (idx < ret.length) {
@@ -35,6 +54,8 @@ final class Param(init: String, origChildren: Seq[Param] = Nil) {
     ret
   }
 
+  /** Converts the parameters back to a String representation.
+   */
   override def toString = origChildren match {
     case Nil => part
     case children =>
@@ -48,75 +69,58 @@ final class Param(init: String, origChildren: Seq[Param] = Nil) {
 object Param {
   val empty = new Param("")
   val emptySeq = List()
+
+  /** Creates a Param given a String.
+   */
   def apply(init: String): Param = {
     val params = Stack(new ListBuffer[Param])
-    val str = init.trim; // DefaultSplitter.unpacked(init)
-    var inQuotes = false
-    var inEscape = false
-    var hasContent = false
-    val currentParam = Stack("")
-    var idx = 0
-    var prev = 0
+    val str = init.trim
 
-    while (idx < str.length) {
-      val c = str(idx)
-      if (inQuotes || inEscape) {
-        if (inEscape) {
-          inEscape = false
-        }
-        else {
-          c match {
-            case quote if (quote == '"' || quote == '\'') =>
-              inQuotes = false
-            case '\\' =>
-              inEscape = true
-            case _ =>
-          }
-        }
+    @tailrec
+    def parseNext(idx: Int, prev: Int, inQuotes: Boolean) {
+      def addNext(opening: Boolean) {
+        if (idx > prev || opening)
+          params.top += new Param(str.substring(prev, idx))
       }
-      else {
-        c match {
+      if (idx < str.length) {
+        str(idx) match {
           case c if (c > ']' && c < '{') || (c > ',' && c < '[') || (c < '\"') => // ignore character
+            parseNext(idx + 1, prev, inQuotes)
           case quote if (quote == '"' || quote == '\'') =>
-            inQuotes = true
-            hasContent = true
+            parseNext(idx + 1, prev, !inQuotes) // begin or end quotes
           case '\\' => // escape - skip next character
-            inEscape = true
-          case ',' => // next parameter
-            if (idx > prev || hasContent) {
-              params.top += new Param(str.substring(prev, idx))
-            }
-            prev = idx + 1
-            hasContent = true
-          case bracket if (bracket == '(' || bracket == '[' || bracket == '{') =>
-            params.top += new Param(str.substring(prev, idx))
+            parseNext(idx + 2, prev, inQuotes)
+          case ',' if (!inQuotes) => // next parameter
+            addNext(false)
+            parseNext(idx + 1, idx + 1, false)
+          case bracket if (bracket == '(' || bracket == '[' || bracket == '{') && !inQuotes =>
+            addNext(true)
             params.push(new ListBuffer[Param])
-            prev = idx + 1
-            hasContent = true
-          case closing if (closing == ')' || closing == ']' || closing == '}') =>
-            if (idx > prev || hasContent) {
-              params.top += new Param(str.substring(prev, idx))
-            }
+            parseNext(idx + 1, idx + 1, false)
+          case closing if (closing == ')' || closing == ']' || closing == '}') && !inQuotes =>
+            addNext(false)
             val children = params.pop
             if (!children.isEmpty) {
               val idxTop = params.top.length - 1
               params.top.update(idxTop, new Param(params.top(idxTop).part, children))
             }
-            prev = idx + 1
-            hasContent = false
+            parseNext(idx + 1, idx + 1, false)
           case _ => // ignore any other character left
+            parseNext(idx + 1, prev, inQuotes)
         }
       }
-      idx += 1
+      else
+        addNext(false)
     }
+
+    parseNext(0, 0, false)
+
     if (params.length != 1) {
       if (params.length > 1)
         throw new RuntimeException("missing closing bracket(s) in expression " + str)
       else
         throw new RuntimeException("too many closing bracket(s) in expression " + str)
     }
-    if (idx > prev || hasContent)
-      params.top += new Param(str.substring(prev, idx))
 
     if (params.top.length > 1)
       new Param("", if (params.top.isEmpty) Nil else params.top)
@@ -179,24 +183,5 @@ object Param {
       }
     }
     else ""
-  }
-
-  def main(args: Array[String]) {
-    /*println(Param("1"))
-    println(Param("1, Inner(\"name\",1,2)"))*/
-    /*val p = Param("Inner(Inner(1,2),3), 4")
-    println(p) // =>*/
-    //println(Param("""List("1", "\"2,3\"", 4)"""))
-    val p = Param("{ x: 42 }")
-    //config.list should be(List("1", "\"2,3\"", "4"))
-    println(p)
-    //println(Param("""Map("1" -> Kack("2"))"""))
-    //println(Param("""XXX("1", "2,3", 4)"""))
-    /*println(Param("""Map("1" -> Kack("1", "2")"""))
-    println(Param("""Map("" -> List(""))""")) // List((,Param(List((-> List,Param(List()))))))*/
-
-    // 1,2,3,4 => Param(List((1,()), (2,()),(3,()),(4,())))
-    //println(Param("1,2,3,4"))
-
   }
 }
