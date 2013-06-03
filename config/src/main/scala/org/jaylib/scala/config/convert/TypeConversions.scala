@@ -12,10 +12,15 @@ import scala.annotation.tailrec
 
 /** Converts a type to its string representation and back.
  *  For creation of the type from a string the `create_...` methods are used.
+ *
+ *  Automatically supported types are:
+ *  + collection types (immutable preferred): List, Seq, Vector, Set
+ *  + all classes deriving from Product, including case classes and tuples
+ *
  *  If a new type `NewType` shall be supported, the TypeConversions has to be extended with the `create_NewType(str: String)` method.
  *  The conversion to a string is simply done by calling the object's toString method - Strings themselves are surrounded by quotes.
- *  If a new type (or an existing one) shall change the conversion to a string, the appendString(Any, StringBuilder)-method has to be overwritten.
- *
+ *  If a new type (or an existing one) shall change the conversion to a string, the appendString(Any, StringBuilder)-method has to be overridden.
+ *  
  *  Example: extend TypeConversions for `java.io.File`, where its String representation is mapped to the file's absolute path
  *
  *  {{{
@@ -32,15 +37,45 @@ import scala.annotation.tailrec
  */
 class TypeConversions {
   private[this] val internalBuf = new StringBuilder
-  def create_Int(str: String) = str.toInt
-  def create_Float(str: String) = str.toFloat
-  def create_Double(str: String) = str.toDouble
-  def create_Boolean(str: String) = str.toBoolean
-  def create_Byte(str: String) = str.toByte
-  def create_Short(str: String) = str.toShort
-  def create_Long(str: String) = str.toLong
-  def create_String(str: String) = {
-    val ret = StringUtils.replaceAll(str, "\\\"", "\"") // replace inner \" with "
+  /** Used internally to automatically convert a saved String to an Int representation.
+   *  @param saved the saved integer String
+   *  @return the converted Int
+   */
+  def create_Int(saved: String) = saved.toInt
+  /** Used internally to automatically convert a saved String to a Float representation.
+   *  @param saved the saved float String
+   *  @return the converted Float
+   */
+  def create_Float(saved: String) = saved.toFloat
+  /** Used internally to automatically convert a saved String to a Double representation.
+   *  @param saved the saved double String
+   *  @return the converted Double
+   */
+  def create_Double(saved: String) = saved.toDouble
+  /** Used internally to automatically convert a saved String to a Boolean representation.
+   *  @param saved the saved boolean String (either "true" or "false")
+   *  @return the converted Boolean 
+   */
+  def create_Boolean(saved: String) = saved.toBoolean
+  /** Used internally to automatically convert a saved String to a single Byte representation.
+   *  @param saved the saved byte String
+   *  @return the converted Byte
+   */
+  def create_Byte(saved: String) = saved.toByte
+  /** Used internally to automatically convert a saved String to a short integer representation.
+   *  @param saved the saved short integer String
+   *  @return the converted Short
+   */
+  def create_Short(saved: String) = saved.toShort
+  /** Used internally to automatically convert a saved String to a long integer representation.
+   *  @param saved the saved long integer String
+   *  @return the converted Long
+   */
+  def create_Long(saved: String) = saved.toLong
+  /** Creates a String by removing any outer quotes from the saved String and replacing inner quotes with
+   *  escapes by quotes only. */
+  def create_String(saved: String) = {
+    val ret = StringUtils.replaceAll(saved, "\\\"", "\"") // replace inner \" with "
     if (ret.startsWith("\""))
       ret.substring(1, ret.length - 1) // remove outer "" 
     else ret
@@ -178,6 +213,11 @@ class TypeConversions {
     getConverter(types, new MapTypes(), splitter)(params)
   }
 
+  /** Gets either the cached converter or creates one depending on the expected types.
+   * @param types the types the converter should generate
+   * @param mapTypes helper cache used for recursive and re-used types (e.g. in lists)
+   * @param splitter the splitter to seperate the supplied types
+   */
   protected[this] def getConverter(types: String, mapTypes: MapTypes, splitter: Splitter): Param => Any = {
     val (currentType, childTypes) = splitter.splitParamType(types)
     val genType = if (types.length > currentType.length && types.charAt(currentType.length) == '[') types else currentType
@@ -217,6 +257,8 @@ class TypeConversions {
     }
   }
 
+  /** Helper to convert a saved map back to the original Map representation.
+   */
   protected[this] def mapConverter(childTypes: Iterable[String], mapTypes: MapTypes, splitter: Splitter): Param => Map[_, _] = {
     val Seq(keyConverter, valueConverter) = childTypes.map(getConverter(_, mapTypes, splitter))
     params: Param =>
@@ -229,6 +271,9 @@ class TypeConversions {
       }.toMap
   }
 
+  
+  /** Helper to convert a saved sequence (List, Vector, Seq or Set) back to its original representation.
+   */
   protected[this] def sequenceConverter(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter): Param => Iterable[_] = {
     val converter = getConverter(childTypes(0), mapTypes, splitter)
 
@@ -246,9 +291,12 @@ class TypeConversions {
       case "Set" =>
         params: Param => params.call(converter).toSet
     }
-
   }
 
+  /** For a given type and the supplied child types:
+   *  get the constructor for the type where all children fit best.
+   *  If there is only one constructor, the one constructor is returned.
+   */
   protected[this] def findDefaultConstructors(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter) = {
     val constructors = (if (currentType.isEmpty) // Tuple
       Class.forName("scala.Tuple" + childTypes.length)
@@ -298,6 +346,9 @@ class TypeConversions {
 
   }
 
+  /** Depending on the the type and if an direct "create_"-method is available, return the "create_"-Method or try to apply
+   *  other conversions (default-constructor, product, sequence or map).
+   */
   protected[this] def converterImpl(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter) = {
     val names = TypeConversions.creatorFromClassName(splitter.shortNameOf(currentType)) :: TypeConversions.creatorFromClassName(currentType) :: Nil
 
