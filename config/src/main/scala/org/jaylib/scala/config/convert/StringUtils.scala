@@ -1,4 +1,4 @@
-package org.jaylib.scala.config
+package org.jaylib.scala.config.convert
 
 object StringUtils {
   final def replaceFirst(input: String, replacements: Iterable[(String, String)]): String = {

@@ -5,25 +5,25 @@ import scala.ref.SoftReference
 import scala.Array.canBuildFrom
 import org.jaylib.scala.config.split.Splitter
 import language.existentials
-import org.jaylib.scala.config.StringUtils
 import org.jaylib.scala.config.split.Param
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 
 /** Converts a type to its string representation and back.
- *  For creation of the type from a string the `create_...` methods are used.
- *
- *  Automatically supported types are:
- *  + collection types (immutable preferred): List, Seq, Vector, Set
- *  + all classes deriving from Product, including case classes and tuples
- *
- *  If a new type `NewType` shall be supported, the TypeConversions has to be extended with the `create_NewType(str: String)` method.
- *  The conversion to a string is simply done by calling the object's toString method - Strings themselves are surrounded by quotes.
- *  If a new type (or an existing one) shall change the conversion to a string, the appendString(Any, StringBuilder)-method has to be overridden.
- *  
- *  Example: extend TypeConversions for `java.io.File`, where its String representation is mapped to the file's absolute path
- *
- *  {{{
+   For creation of the type from a string the `create_...` methods are used.
+ 
+   Automatically supported types are:
+   $ - collection types (immutable preferred): List, Seq, Vector, Set
+   $ - all classes deriving from Product, including case classes and tuples
+ 
+   If a new type `NewType` shall be supported, the TypeConversions has to be extended with the `create_NewType(str: String)` method.
+   The conversion to a string is simply done by calling the object's toString method - Strings themselves are surrounded by quotes.
+ 
+   If a new type (or an existing one) shall change the conversion to a string, the appendString(Any, StringBuilder)-method has to be overridden.
+   
+   Example: extend TypeConversions for `java.io.File`, where its String representation is mapped to the file's absolute path
+ 
+   {{{
     val config = ConfigMacros.wrap(classOf[Config], props.getProperty, props.setProperty, new TypeConversions {
       def create_File(filename: String) = new File(filename)
       override def appendString(any: Any, buf: StringBuilder) {
@@ -298,16 +298,17 @@ class TypeConversions {
    *  If there is only one constructor, the one constructor is returned.
    */
   protected[this] def findDefaultConstructors(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter) = {
-    val constructors = (if (currentType.isEmpty) // Tuple
+    val clz = if (currentType.isEmpty) // Tuple
       Class.forName("scala.Tuple" + childTypes.length)
     else // we might have a case class here
-      Class.forName(getCreateString(currentType, splitter))).getConstructors.toList
+      Class.forName(getCreateString(currentType, splitter))
+    val constructors = clz.getConstructors.toList
 
     if (childTypes.isEmpty) {
       // search for the best fitting constructor (smallest number of parameters & does not contain current type)
       (if (constructors.length == 1) constructors
       else constructors.filterNot(_.getParameterTypes.map(_.getName).contains(currentType)).sortBy(_.getParameterTypes.length).toList) match {
-        case constructor :: any => (constructor, constructor.getParameterTypes.map(getClassName).map(getConverter(_, mapTypes, splitter)).toSeq)
+        case constructor :: any => (clz, constructor, constructor.getParameterTypes.map(getClassName).map(getConverter(_, mapTypes, splitter)).toSeq)
         case Nil                => throw new Exception("could not find appropriate constructor")
       }
     }
@@ -318,8 +319,8 @@ class TypeConversions {
       else constructors.find(_.getParameterTypes.map(_.getName).toList == childTypes)) match {
 
         case Some(constructor) => if (!childTypes.exists(_.indexOf(currentType) != -1))
-          (constructor, childTypes.map(getConverter(_, mapTypes, splitter)).toSeq)
-        else (constructor, null) // null -> the converter for a recursive type is generated in the function call below
+          (clz, constructor, childTypes.map(getConverter(_, mapTypes, splitter)).toSeq)
+        else (clz, constructor, null) // null -> the converter for a recursive type is generated in the function call below
         case None => throw new Exception("could not find appropriate constructor")
       }
     }
@@ -331,7 +332,7 @@ class TypeConversions {
    */
   protected[this] def defaultConverter(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter): Param => Any = {
 
-    val (constructor, convertersPre) = findDefaultConstructors(currentType, childTypes, mapTypes, splitter)
+    val (_, constructor, convertersPre) = findDefaultConstructors(currentType, childTypes, mapTypes, splitter)
     params: Param =>
       {
         val converters =

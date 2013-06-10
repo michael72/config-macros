@@ -17,6 +17,7 @@ class ConfigMacrosCompileTest extends FlatSpec with ShouldMatchers with CanVerb 
     val out = new StringWriter
 
     settings.classpath.value = System.getProperty("java.class.path")
+    settings.embeddedDefaults[ConfigMacros.type]
     val interpreter = new IMain(settings, new PrintWriter(out))
     interpreter.addImports("org.jaylib.scala.config._", "org.jaylib.scala.config.macros._", "scala.collection.mutable.HashMap")
 
@@ -37,7 +38,7 @@ class ConfigMacrosCompileTest extends FlatSpec with ShouldMatchers with CanVerb 
     val config = ConfigMacros.wrap(classOf[ConfigWithFile], map, map.update)
   }""")
 
-    Then("the interpreter should issue an warning for unsupported type file")
+    Then("the interpreter should issue a warning for unsupported type file")
     res should include("warning: Unsupported type java.io.File")
     And("give a hint to add an annotation to ignore the warning and try the first constructor")
     res should include("Please add the @autoConstruct annotation to file")

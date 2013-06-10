@@ -5,6 +5,7 @@ import org.scalatest.matchers.ShouldMatchers
 import org.jaylib.scala.config.split.DefaultSplitter
 import org.scalatest.GivenWhenThen
 import org.jaylib.scala.config.split.Param
+import org.jaylib.scala.config.convert.ConversionException
 
 class JsonConversionsTest extends FlatSpec with ShouldMatchers with GivenWhenThen {
 
@@ -73,6 +74,25 @@ class JsonConversionsTest extends FlatSpec with ShouldMatchers with GivenWhenThe
   }
 }""".replaceAll("\r\n", "\n"))
   }
+  
+  it should "restore JSON files where the order of the members is not in the order of the configuration object" in {
+     import JsonConversionsTest.Simple2
+     conv.convertAny(classOf[Simple2].getName + "(Int,String)", new DefaultSplitter())(Param("""{ str: "hello", x: 42 }""")) should be (Simple2(42, "hello"))
+  }
+  
+  it should "throw a ConversionException when not enough parameters are supplied to restore the configuration object" in {
+     import JsonConversionsTest.Simple2
+     intercept[ConversionException] {
+    	 conv.tryConvert("Simple2", classOf[Simple2].getName + "(Int,String)", new DefaultSplitter())("""{ str: "hello" }""")
+     }.getMessage should be ("Error converting 'Simple2': There are not enough names saved than are needed for re-construction - could not be restored: x")
+  }
+
+  it should "throw a ConversionException when saved names could not be associated to restore the configuration object" in {
+     import JsonConversionsTest.Simple2
+     intercept[ConversionException] {
+    	 conv.tryConvert("Simple2", classOf[Simple2].getName + "(Int,String)", new DefaultSplitter())("""{ xx: 4, str: "hello" }""")
+     }.getMessage should be ("Error converting 'Simple2': There are more names saved than are available - could not be associated: xx")
+  }
 }
 
 object JsonConversionsTest {
@@ -86,4 +106,5 @@ object JsonConversionsTest {
                      rec: Rec2,
                      tup: (Int, Float), name: String, inner: Inner, arr: List[Watt], inner2: Inner)
   case class Simple(x: Int)
+  case class Simple2(x: Int, str: String)
 }

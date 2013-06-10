@@ -5,7 +5,11 @@ import org.jaylib.scala.config.split.Splitter
 import language.existentials
 import scala.collection.mutable.ListBuffer
 import org.jaylib.scala.config.split.Param
+import org.jaylib.scala.config.convert.ConversionException
 
+/**
+ * Provides conversion from configuration traits to JSON format and back.
+ */
 class JsonConversions extends TypeConversions {
 
   protected[this] def initTabs = "  "
@@ -20,8 +24,9 @@ class JsonConversions extends TypeConversions {
     tabsBuf.setLength(tabsBuf.length - tab.length)
   }
 
+  /** Creates a JSON block as String with brackets.
+   */
   protected[this] def mkBlock(brackets: String, buf: StringBuilder, it: => Iterable[String]) {
-
     openBrace
     val inBrackets = it.mkString("," + tabs) 
     buf.append(brackets(0) + tabs)
@@ -30,7 +35,7 @@ class JsonConversions extends TypeConversions {
     buf.append(tabs + brackets(1))
   }
 
-  override protected[this] def mapConverter(childTypes: Iterable[String], mapTypes: MapTypes, splitter: Splitter): Param => Map[_, _] = {
+  protected[this] override def mapConverter(childTypes: Iterable[String], mapTypes: MapTypes, splitter: Splitter): Param => Map[_, _] = {
     val Seq(keyConverter, valueConverter) = childTypes.map(getConverter(_, mapTypes, splitter))
     params: Param =>
       params.children.map {
@@ -46,7 +51,7 @@ class JsonConversions extends TypeConversions {
   }
 
   protected[this] override def defaultConverter(currentType: String, childTypes: Seq[String], mapTypes: MapTypes, splitter: Splitter): Param => Any = {
-    val (constructor, convertersPre) = findDefaultConstructors(currentType, childTypes, mapTypes, splitter)
+    val (clz, constructor, convertersPre) = findDefaultConstructors(currentType, childTypes, mapTypes, splitter)
     params: Param => {
       val converters =
         if (convertersPre != null) convertersPre
@@ -54,9 +59,27 @@ class JsonConversions extends TypeConversions {
       // the params are padded with empty strings when not enough parameters were provided (this also supports empty lists as initial default value)
       // the zipped.map(_(_)) calls the splitted parameters on each converter resulting in the real init parameters used for the constructor
       val sortedParams = {
-        val (names, arr) = JsonConversions.replJson(params, splitter)
-        // TODO really sort it according to names!
-        Param(arr.mkString("(", ",", ")"))
+        val (savedNames, savedParams) = JsonConversions.replJson(params, splitter)
+        val fieldNames = clz.getDeclaredFields.filter { field => !field.isSynthetic && savedNames.contains(field.getName)}.map { _.getName }
+        if (savedNames.deep != fieldNames.deep) {
+        if (fieldNames.length < savedNames.length) 
+          throw new RuntimeException("There are more names saved than are available - could not be associated: " + savedNames.filterNot(fieldNames.contains).mkString(","))
+          // really sort it according to names! 
+          val paramsSorted = savedParams.clone
+          paramsSorted.zipWithIndex.foreach {
+            case (item, index) =>
+              paramsSorted(index) = savedParams(fieldNames.indexOf(savedNames(index)))
+          }
+          Param(paramsSorted.mkString("(", ",", ")"))
+        }
+        else {
+            if (constructor.getParameterTypes().length > savedNames.length) {
+              val fieldNamesNot = clz.getDeclaredFields.filterNot { field => field.isSynthetic || savedNames.contains(field.getName)}.map { _.getName }
+              throw new RuntimeException("There are not enough names saved than are needed for re-construction - could not be restored: " + fieldNamesNot.mkString(","))
+            }
+	        else
+	        	Param(savedParams.mkString("(", ",", ")"))
+        }
       }
       constructor.newInstance(sortedParams.call(converters).asInstanceOf[Array[Object]]: _*)
     }
@@ -71,6 +94,10 @@ class JsonConversions extends TypeConversions {
     }
   }
 
+  /** Converts a sequence to its JSON String representation with []-brackets.
+   *  This is either a single-line representation for the basic numeric types or a 
+   *  multiple-line representation for nested types.
+   */
   def seqToString(seq: Seq[_], buf: StringBuilder) {
     if (!seq.isEmpty) {
       val clzName = seq(0).getClass.getName
@@ -81,6 +108,7 @@ class JsonConversions extends TypeConversions {
     }
     else buf.append("[]")
   }
+  
   override def mapToString(convertMap: Map[_, _], buf: StringBuilder) {
     mkBlock("{}", buf,
       convertMap.map {

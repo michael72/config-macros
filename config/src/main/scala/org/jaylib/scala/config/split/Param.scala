@@ -27,7 +27,7 @@ final class Param(init: String, origChildren: Seq[Param] = Nil) {
   /** Converts the children of this parameter given a converter to a list of converted values.
    */
   def call(converter: Param => Any): Seq[Any] = {
-    val ret = ListBuffer[Any]()
+    val ret = new ListBuffer[Any]()
     val it = children.iterator
     while (it.hasNext) {
       ret += converter(it.next)
@@ -57,11 +57,11 @@ final class Param(init: String, origChildren: Seq[Param] = Nil) {
   /** Converts the parameters back to a String representation.
    */
   override def toString = origChildren match {
-    case Nil => part
+    case empty if empty.isEmpty => part
     case children =>
       if (part.isEmpty())
         children.mkString(",")
-      else
+      else 
         children.mkString(part + "(", ",", ")")
   }
 }
