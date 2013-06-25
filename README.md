@@ -71,4 +71,5 @@ Then we can use [ConfigMacros](https://github.com/michael72/config-macros/blob/m
 
 Now the config can be used as described in the code at the beginning.
 
-I will add further examples in a sub-project and a how-to-build later. For now the Scalatest [ConfigMacrosTest](https://github.com/michael72/config-macros/blob/master/macrotests/src/test/scala/org/jaylib/scala/config/macros/ConfigMacrosTest.scala) should give a good overview of what is already possible with the configmacros.
+You will find a sample project including the sbt files in [sampleconfig](https://github.com/michael72/config-macros/blob/master/sampleconfig) - the contained [SampleConfig.scala](https://github.com/michael72/config-macros/blob/master/sampleconfig/src/main/scala/org/jaylib/scala/config/macros/SampleConfig.scala) is the complete example from above. 
+The Scalatest [ConfigMacrosTest](https://github.com/michael72/config-macros/blob/master/macrotests/src/test/scala/org/jaylib/scala/config/macros/ConfigMacrosTest.scala) should also give a good overview of what is already possible with the configmacros.
