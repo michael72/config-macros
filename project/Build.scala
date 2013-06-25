@@ -18,8 +18,9 @@ object BuildSettings {
 
     publishMavenStyle := true,
     publishArtifact in Test := false,
-    pomIncludeRepository := { _ => false },
-    pomExtra := (
+    pomIncludeRepository := { _ => false } , 
+	//useGpg := true,
+	pomExtra := (
       <scm>
         <url>git@github.com:michael72/config-macros.git</url>
         <connection>scm:git:git@github.com:michael72/config-macros.git</connection>
