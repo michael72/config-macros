@@ -4,8 +4,8 @@ import Keys._
 object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization  := "org.jaylib.scala.config",
-    version       := "1.0.0",
-    scalaVersion  := "2.10.1",
+    version       := "1.0.1",
+    scalaVersion  := "2.10.2",
     // Sonatype OSS deployment
     publishTo <<= version { (v: String) =>
       val nexus = "https://oss.sonatype.org/"

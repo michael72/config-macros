@@ -196,7 +196,10 @@ class TypeConversions {
    */
   def tryConvert(name: String, types: String, splitter: Splitter)(params: String): Any = {
     try {
-      convertAny(types, splitter)(Param(params))
+      if (types.equals("String"))
+        create_String(params) // Strings are a little "sensitive" data - they may contain brackets etc. which may confuse the parameter conversion 
+      else
+    	convertAny(types, splitter)(Param(params))
     }
     catch {
       case t: Throwable =>
