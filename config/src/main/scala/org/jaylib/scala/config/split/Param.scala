@@ -134,34 +134,11 @@ object Param {
 
   private[this] val internalBuf = new StringBuilder
 
-  private[this] def replaceEscapes(str: String, start: Int, end: Int): String = {
-    val idx = str.indexOf('\\', start)
-    val buf = internalBuf
-    if (idx == -1) {
-      if (start == 0 && end == str.length - 1)
-        str
-      else
-        str.substring(start, end)
-    }
-    else {
-      @tailrec
-      def doReplaceEscapes(str: String, idxStart: Int, idxEnd: Int) {
-        val idxNew = str.indexOf('\\', idxEnd + 2)
-        buf.append(str.substring(idxStart, idxEnd))
-        if (idxEnd < str.length - 1) {
-          buf.append(str.charAt(idxEnd + 1))
-          if (idxNew == -1)
-            buf.append(str.substring(idxEnd + 2, end))
-          else {
-            doReplaceEscapes(str, idxEnd + 2, idxNew)
-          }
-        }
-      }
-      doReplaceEscapes(str, start, idx)
-      val ret = buf.toString
-      buf.setLength(0)
-      ret
-    }
+  private[this] def substr(str: String, start: Int, end: Int): String = {
+	  if (start == 0 && end == str.length - 1)
+	    str
+	  else
+	    str.substring(start, end)
   }
 
   def unpackString(str: String): String = {
@@ -177,9 +154,9 @@ object Param {
       else {
         val c = str.charAt(start)
         if ((c == '"' || c == '\'') && c == str.charAt(end))
-          replaceEscapes(str, start + 1, end)
+          substr(str, start + 1, end)
         else
-          replaceEscapes(str, start, end + 1)
+          substr(str, start, end + 1)
       }
     }
     else ""

@@ -49,7 +49,7 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     }
     val map = HashMap[String, String]() ++ Map(
       "str" -> """1,\"2\",3""",
-      "list" -> """List("1", "\"2,3\"", 4)""",
+      "list" -> """List("1", "2,3", 4)""",
       "map" -> """Map("" -> List(""))""")
     When("the trait is wrapped as config with the map values as initial values")
     val config = ConfigMacros.wrap(classOf[Strings], map.getOrElse(_, ""), map.update)
@@ -264,7 +264,41 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     config.files ::= new java.io.File("""C:\temp\test""")
     config.files ::= new java.io.File(".")
     map("files") should be("""List(., C:\temp\test)""") // elements are prepended with ::=
+  }
+  
+  it should "work with empty configuration strings" in {
+    trait EmptyConf {
+      var str: String
+      var list: List[String]
+    }
+    val map = HashMap[String,String]()
+    When("the trait is wrapped as config")
+    val config = ConfigMacros.wrap(classOf[EmptyConf], map.getOrElse(_,""), map.update)
+    Then("the empty configuration should be handled")
+    
+    config.str should be ("")
+    config.list should be (Nil)
+  }
 
+  it should "work with brackets in strings" in {
+    trait EmptyConf {
+      var initDir: String
+      var str: String
+      var str2: String
+    }
+    val map = HashMap[String, String]() ++ Map("initDir" -> "\"C:\\sample\\[dir]\"", "str" -> "1(2))", "str2" -> "\"1 [2,3], 4[\"")
+    When("the trait is wrapped as config")
+    val config = ConfigMacros.wrap(classOf[EmptyConf], map.getOrElse(_,""), map.update)
+    Then("the string configuration should be handled")
+    
+    config.initDir should be ("C:\\sample\\[dir]")
+    config.str should be ("1(2))")
+    config.str2 should be ("1 [2,3], 4[")
+    
+    config.initDir = "C:\\other\\[dir]"
+    map("initDir") should be ("\"C:\\other\\[dir]\"")
+    config.str2 = "2 [3,4], 5["
+    map("str2") should be ("\"2 [3,4], 5[\"")
   }
 }
 
