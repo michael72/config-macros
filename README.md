@@ -28,10 +28,24 @@ Or even listen to property changes
     
 This is the aim of config-macros: to provide an easy-to-use way to save and restore application settings.
 
-Examples
-========
+SBT configuration
+=================
 
-For the above code to work, simply define a trait (extending [ObservableConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/ObservableConfig.scala) if your want to use the bind features):
+Currently only scala 2.10 is supported (support for 2.11 will be added).
+add the following lines to your build.sbt:
+
+    scalaVersion := "2.10.2"
+
+    libraryDependencies ++= Seq(
+	    "org.jaylib.scala.config" %% "configbase" % "1.0.1",
+	    "org.jaylib.scala.config" %% "configmacros" % "1.0.1" % "compile")
+
+
+
+Usage
+=====
+
+To use the macros, simply define a trait (extending [ObservableConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/ObservableConfig.scala) if your want to use the bind features):
 
     trait Config extends ObservableConfig {
       var lastDirectory: File
@@ -70,6 +84,9 @@ Then we can use [ConfigMacros](https://github.com/michael72/config-macros/blob/m
     })
 
 Now the config can be used as described in the code at the beginning.
+
+Sample project
+==============
 
 You will find a sample project including the sbt files in [sampleconfig](https://github.com/michael72/config-macros/blob/master/sampleconfig) - the contained [SampleConfig.scala](https://github.com/michael72/config-macros/blob/master/sampleconfig/src/main/scala/org/jaylib/scala/config/macros/SampleConfig.scala) is the complete example from above. 
 The Scalatest [ConfigMacrosTest](https://github.com/michael72/config-macros/blob/master/macrotests/src/test/scala/org/jaylib/scala/config/macros/ConfigMacrosTest.scala) should also give a good overview of what is already possible with the configmacros.
