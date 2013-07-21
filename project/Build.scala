@@ -4,7 +4,7 @@ import Keys._
 object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization  := "org.jaylib.scala.config",
-    version       := "1.0.1",
+    version       := "1.0.2-SNAPSHOT",
     scalaVersion  := "2.10.2",
     // Sonatype OSS deployment
     publishTo <<= version { (v: String) =>
