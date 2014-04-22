@@ -58,11 +58,7 @@ final class Param(init: String, origChildren: Seq[Param] = Nil) {
    */
   override def toString = origChildren match {
     case empty if empty.isEmpty => part
-    case children =>
-      if (part.isEmpty())
-        children.mkString(",")
-      else 
-        children.mkString(part + "(", ",", ")")
+    case children => children.mkString(part + "(", ",", ")")
   }
 }
 
