@@ -91,6 +91,19 @@ class TypeConversions {
     internalBuf.setLength(0)
     ret
   }
+  
+  /**
+   * Implementation for Int (and so forth) to prevent code generation within the macro
+   * that uses boxing for each generated function. The boxing is then done here at a central location.
+   */
+  def toString_Int(num: Int) = toString(num)
+  def toString_Char(num: Char) = toString(num)
+  def toString_Byte(num: Byte) = toString(num)
+  def toString_Long(num: Long) = toString(num)
+  def toString_Short(num: Short) = toString(num)
+  def toString_Float(num: Float) = toString(num)
+  def toString_Double(num: Double) = toString(num)
+  def toString_Boolean(num: Boolean) = toString(num)
 
   /** Converts the given argument to a string and appends it to the given StringBuilder.
    *  This method may be overridden to provide an own conversion to a string. See the example 

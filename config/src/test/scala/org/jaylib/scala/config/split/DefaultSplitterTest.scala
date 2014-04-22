@@ -7,7 +7,8 @@ class DefaultSplitterTest extends FlatSpec with ShouldMatchers {
 	val splitter = new DefaultSplitter
   
 	"A splitter" should "split a simple comma-separated String to an array" in {
-	  splitter.split("1,2,3") should be (Seq("1","2","3"))
+	  val splitResult = splitter.split("1,2,3")
+	  splitResult should be (Seq("1","2","3"))
 	}
 	
 	it should "split a comma-separated String with brackets and an optional prefix to an array" in {
@@ -27,6 +28,7 @@ class DefaultSplitterTest extends FlatSpec with ShouldMatchers {
 	  splitter.split("(1,(2,3),4)") should be (Seq("1", "(2,3)", "4"))
 	  splitter.split("""(1,"2,3",,4)""") should be (Seq("1", """"2,3"""", "", "4"))
 	  splitter.split("""(1,(2,3,"4,5"),4)""") should be (Seq("1", """(2,3,"4,5")""", "4"))
+	  splitter.split("(1,2),(3,4)") should be (Seq("(1,2)", "(3,4)"))
 	}
 	
 	it should "unpack prefix and array" in {

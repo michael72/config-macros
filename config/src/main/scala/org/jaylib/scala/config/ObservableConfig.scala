@@ -42,9 +42,9 @@ trait ObservableConfig {
    * @param listener taking 2 T arguments: (oldValue, newValue) for the old and new value of the
    * watched property. 
    */
-  final def bindTo[T](property: T)(listener: (T, T) => Unit) {
+  final def bindTo[T](property: T)(listener: (T, T) => Unit) : Unit =
     bindings.addBinding(property, Binding((oldVal, newVal) => listener(oldVal.asInstanceOf[T], newVal.asInstanceOf[T])))
-  }
+  
   
   
   /**
@@ -55,28 +55,28 @@ trait ObservableConfig {
    * @param listener taking one T argument: (newValue) for the new value of the
    * watched property. 
    */
-  final def bindToValue[T](property: T)(listener: T => Unit) {
+  final def bindToValue[T](property: T)(listener: T => Unit) : Unit =
     bindings.addBinding(property, Binding((_, newVal) => listener(newVal.asInstanceOf[T])))
-  }
+  
   
   /**
    * Remove all bindings from a property.
    */
-  final def removeBindings(property: Any) {
+  final def removeBindings(property: Any): Unit =
     bindings.remove(property)
-  }
+  
 
   /**
    * This method will be implemented automatically by ConfigMacros#wrap().
    * It calls the real setter method provided in the macro call.
    */
-  def onSettingsChange(key: String, newValue: String)
+  def onSettingsChange(key: String, newValue: String) : Unit
 
   /**
    * This method will be called automatically when a setter in the config is called,
    * when the config was wrapped using ConfigMacros#wrap.
    */
-  protected[this] final def updateSetting(key: String, newString: String, property: Any, newValue: Any, isVolatile: Boolean) {
+  protected[this] final def updateSetting(key: String, newString: String, property: Any, newValue: Any, isVolatile: Boolean) : Unit = {
 
     bindings.get(property) match {
       case Some(listenerSet) =>

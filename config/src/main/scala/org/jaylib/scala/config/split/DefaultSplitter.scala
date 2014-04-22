@@ -2,7 +2,7 @@ package org.jaylib.scala.config.split
 
 import scala.annotation.tailrec
 import scala.collection.mutable.{ ListBuffer }
-import scala.collection.immutable.Stack
+import scala.collection.immutable.List
 
 /** Default implementation of the splitter that works on Strings where the items are separated by comma.
  */
@@ -71,7 +71,7 @@ class DefaultSplitter extends Splitter {
   private[this] def buildSeqFromString(strUnpacked: String): Seq[String] = {
     if (!strUnpacked.isEmpty) {
       val lb = new ListBuffer[String]()
-      buildSeq(strUnpacked, 0, lb)
+      DefaultSplitter.buildSeq(strUnpacked, 0, lb)
       lb.toSeq
     }
     else
@@ -79,54 +79,6 @@ class DefaultSplitter extends Splitter {
 
   }
 
-  /** Small parsing done here - the content of Strings in '"' is not considered, also
-   *  the bracket level is considered.
-   *  For example: findNext(((1,2),3), Stack(','), 0) should deliver the index of the 2nd comma, because
-   *  the first is in a pair of extra brackets.
-   */
-  @tailrec
-  private[this] def findNext(str: String, search: Stack[Char], idx: Int): Int = {
-    if (idx < str.length) {
-      str.charAt(idx) match {
-        // performance hack with ASCII table - first work on the characters that are not searched
-        // searched characters (up to now) are: comma, the brackets, quotes and backspace
-        case c if (c > ']' && c < '{') || (c > ',' && c < '[') || (c < '\"') =>
-          findNext(str, search, idx + 1)
-        case found if (found == search.top) =>
-          val newSearch = search.pop
-          if (newSearch.isEmpty) idx // the initially searched item is found -> return the index
-          else findNext(str, newSearch, idx + 1) // only closing bracket or quote was found -> go on searching
-        case quote if (quote == '"' || quote == '\'') =>
-          findNext(str, search.push(quote), idx + 1) // search next fitting quote
-        case '\\' => // escape - skip next character
-          findNext(str, search, idx + 2)
-        case bracket if (bracket == '(' || bracket == '[' || bracket == '{') =>
-          findNext(str, search.push(DefaultSplitter.CLOSING_BRACKETS(DefaultSplitter.OPENING_BRACKETS.indexOf(bracket))), idx + 1) // search closing bracket*/
-        case closing if (closing == ')' || closing == ']' || closing == '}') =>
-          throw new IllegalArgumentException("unmatched closing bracket in " + str.substring(0, idx) + " /*--->*/ " + str.substring(idx) + ", search is " + (if (search.isEmpty) "empty" else search.toList.mkString("[", ",", "]")))
-        case _ =>
-          findNext(str, search, idx + 1)
-      }
-    }
-    else {
-      // end of string is reached - the comma itself is not expected at the end, hence ',' on the stack is normal,
-      // but another item indicates that a closing bracket is missing or there is one opening bracket too many
-      if (search.length > 1) throw new IllegalArgumentException(s"The expression '${str}' is missing a closing '${search.pop}'")
-      -1
-    }
-  }
-
-  /** Builds the ListBuffer in res with the parameters separated by ','.
-   */
-  @tailrec
-  private[this] def buildSeq(str: String, startIdx: Int, res: ListBuffer[String]) {
-    findNext(str, DefaultSplitter.SEARCH, startIdx) match {
-      case -1 => res += str.substring(startIdx).trim // no further entries found - done.
-      case idx =>
-        res += str.substring(startIdx, idx).trim // add the current result
-        buildSeq(str, idx + 1, res) // and go to next item
-    }
-  }
 }
 
 object DefaultSplitter {
@@ -134,7 +86,7 @@ object DefaultSplitter {
   val OPENING_BRACKETS = "([{".toSeq
   val CLOSING_BRACKETS = ")]}".toSeq
   val BRACKETS = OPENING_BRACKETS ++ CLOSING_BRACKETS
-  val SEARCH = Stack(',')
+  val SEARCH = List(',')
 
   /**
    * Search for the last non-whitespace character in a String.
@@ -162,12 +114,63 @@ object DefaultSplitter {
   def unpacked(str: String) = findLast(str, str.length - 1) match {
     // check if the expression ends with a closing bracket - if so (and no parameter is preceeding): unpack the string
     case Some(closing) if DefaultSplitter.CLOSING_BRACKETS.contains(closing) =>
-      val idxBracket = str.indexOf(DefaultSplitter.OPENING_BRACKETS(DefaultSplitter.CLOSING_BRACKETS.indexOf(closing)))
-      if (str.lastIndexOf(',', idxBracket) == -1) // no parameters before the bracket -> unpack the brackets
+      val opening = DefaultSplitter.OPENING_BRACKETS(DefaultSplitter.CLOSING_BRACKETS.indexOf(closing))
+      val idxBracket = str.indexOf(opening)
+      val idxNext = findNext(str, List(','), idxBracket)
+      if (idxNext == -1) // no parameters before the bracket -> unpack the brackets
         str.substring(idxBracket + 1, str.lastIndexOf(closing))
       else
         str
     case _ => str
   }
 
+  /** Small parsing done here - the content of Strings in '"' is not considered, also
+   *  the bracket level is considered.
+   *  For example: findNext(((1,2),3), Stack(','), 0) should deliver the index of the 2nd comma, because
+   *  the first is in a pair of extra brackets.
+   */
+  @tailrec
+  private[this] def findNext(str: String, search: List[Char], idx: Int): Int = {
+    if (idx < str.length) {
+      str.charAt(idx) match {
+        // performance hack with ASCII table - first work on the characters that are not searched
+        // searched characters (up to now) are: comma, the brackets, quotes and backspace
+        case c if (c > ']' && c < '{') || (c > ',' && c < '[') || (c < '\"') =>
+          findNext(str, search, idx + 1)
+        case found if (found == search.head) =>
+          val newSearch = search.tail
+          if (newSearch.isEmpty) idx // the initially searched item is found -> return the index
+          else findNext(str, newSearch, idx + 1) // only closing bracket or quote was found -> go on searching
+        case quote if (quote == '"' || quote == '\'') =>
+          findNext(str, quote::search, idx + 1) // search next fitting quote
+        case '\\' => // escape - skip next character
+          findNext(str, search, idx + 2)
+        case bracket if (bracket == '(' || bracket == '[' || bracket == '{') =>
+          val closing = DefaultSplitter.CLOSING_BRACKETS(DefaultSplitter.OPENING_BRACKETS.indexOf(bracket))
+          findNext(str, closing::search, idx + 1) // search closing bracket*/
+        case closing if (closing == ')' || closing == ']' || closing == '}') =>
+          throw new IllegalArgumentException("unmatched closing bracket in " + str.substring(0, idx) + " /*--->*/ " + str.substring(idx) + ", search is " + (if (search.isEmpty) "empty" else search.toList.mkString("[", ",", "]")))
+        case _ =>
+          findNext(str, search, idx + 1)
+      }
+    }
+    else {
+      // end of string is reached - the comma itself is not expected at the end, hence ',' on the stack is normal,
+      // but another item indicates that a closing bracket is missing or there is one opening bracket too many
+      if (search.length > 1) throw new IllegalArgumentException(s"The expression '${str}' is missing a closing '${search.last}'")
+      -1
+    }
+  }
+
+  /** Builds the ListBuffer in res with the parameters separated by ','.
+   */
+  @tailrec
+  private def buildSeq(str: String, startIdx: Int, res: ListBuffer[String]) {
+    findNext(str, DefaultSplitter.SEARCH, startIdx) match {
+      case -1 => res += str.substring(startIdx).trim // no further entries found - done.
+      case idx =>
+        res += str.substring(startIdx, idx).trim // add the current result
+        buildSeq(str, idx + 1, res) // and go to next item
+    }
+  }
 }
