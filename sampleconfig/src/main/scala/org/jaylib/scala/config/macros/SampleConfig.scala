@@ -21,11 +21,17 @@ object SampleConfig extends App {
     var host: String
     var port: Int
     var autoConnect: Boolean
+    @noListener
+    var dontUpdate: Float
+    @noListener
+    var dumbatz: String
   }
+  
   
   val productDirectory = new File(System.getenv("APPDATA"), "JayLib")
 
-  val defaults = Map[String, String]("lastDirectory" -> ".", "host" -> "localhost", "port" -> "8080", "autoConnect" -> "false")
+  val defaults = Map[String, String]("lastDirectory" -> ".", "host" -> "localhost", "port" -> "8080", 
+      "autoConnect" -> "false", "dontUpdate" -> "0.0f")
 
   /** The properties will be saved to a properties-file */
   val props = new PropertiesConfig(new File(productDirectory, "SampleConfig.properties"), defaults)
@@ -40,9 +46,11 @@ object SampleConfig extends App {
   val config = ConfigMacros.wrap(classOf[Config], props.getProperty, props.setProperty, new TypeConversions {
     def create_File(filename: String) = new File(filename)
     override def appendString(any: Any, buf: StringBuilder) = any match {
+      case num: Int => buf.append(Integer.toHexString(num))
       case file: File => buf.append(file.getAbsolutePath)
       case any => super.appendString(any, buf)
     }
+    override def create_Int(str: String) = Integer.parseInt(str, 16)
   })
 
   /* When the config extends Observable we are able to track changed properties. */

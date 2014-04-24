@@ -1,7 +1,7 @@
 package org.jaylib.scala.config.annotation
 
 import scala.annotation.StaticAnnotation
-
+import scala.annotation.meta._
 /**
  * Annotation used to tell the config macro to try to initialize the data
  * with automatically. This can be safely used for case classes and
@@ -10,4 +10,5 @@ import scala.annotation.StaticAnnotation
  * to determine automatically if the given type can be constructed in the default
  * way and issues a warning. Hence this annotation to prevent the warning.
  */
+@getter @setter
 class autoConstruct extends StaticAnnotation

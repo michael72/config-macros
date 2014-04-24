@@ -8,6 +8,7 @@ import scala.tools.nsc.interpreter._
 import java.io.StringWriter
 import java.io.PrintWriter
 
+
 class ConfigMacrosCompileTest extends FlatSpec with ShouldMatchers with CanVerb with GivenWhenThen {
   // compiler is only created once - as this is very time consuming
   // the interpreted code should be made independent from one another (i.e. by wrapping each in a unit)
@@ -19,7 +20,7 @@ class ConfigMacrosCompileTest extends FlatSpec with ShouldMatchers with CanVerb 
     settings.classpath.value = System.getProperty("java.class.path")
     settings.embeddedDefaults[ConfigMacros.type]
     val interpreter = new IMain(settings, new PrintWriter(out))
-    interpreter.addImports("org.jaylib.scala.config._", "org.jaylib.scala.config.macros._", "scala.collection.mutable.HashMap")
+    interpreter.interpret("import org.jaylib.scala.config._\nimport org.jaylib.scala.config.macros._\nimport scala.collection.mutable.HashMap")
 
     def interpret(str: String): String = {
       out.getBuffer.setLength(0)
