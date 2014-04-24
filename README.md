@@ -37,8 +37,8 @@ add the following lines to your build.sbt:
     scalaVersion := "2.10.4"
 
     libraryDependencies ++= Seq(
-	    "org.jaylib.scala.config" %% "configbase" % "1.0.3",
-	    "org.jaylib.scala.config" %% "configmacros" % "1.0.3" % "compile")
+	    "org.jaylib.scala.config" %% "configbase" % "1.0.4",
+	    "org.jaylib.scala.config" %% "configmacros" % "1.0.4" % "compile")
 
 
 
