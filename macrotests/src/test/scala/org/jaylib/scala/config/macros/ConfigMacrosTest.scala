@@ -52,23 +52,23 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
       "str" -> """1,\"2\",3""",
       "list" -> """List("1", "2,3", 4)""",
       "map" -> """Map("" -> List(""))""",
-      "mapStrings" -> """Map("hallo" -> "hello","zweiter" -> "second")""")
+      "mapStrings" -> """Map("hallo" -> "#hello","zweiter" -> "#second")""")
 
     When("the trait is wrapped as config with the map values as initial values")
     val config = ConfigMacros.wrap(classOf[Strings], map.getOrElse(_, ""), map.update)
 
     Then("the config should contain the correct number of parsed strings")
     config.str should be("""1,"2",3""")
-    config.mapStrings should be(Map("hallo" -> "hello", "zweiter" -> "second"))
+    config.mapStrings should be(Map("hallo" -> "#hello", "zweiter" -> "#second"))
     config.str = """"test,1,2""""
 
     new TypeConversions().toString(config.str) should be(""""\"test,1,2\""""")
     map("str") should be(""""\"test,1,2\""""")
     config.list should be(List("1", "2,3", "4"))
     config.list ::= "(4,\"5,6\")"
-    config.mapStrings += ("ein anderer" -> "another")
+    config.mapStrings += ("ein anderer" -> "#another")
     map("list") should be("""List("(4,\"5,6\")", "1", "2,3", "4")""")
-    map("mapStrings") should be("""Map("hallo" -> "hello", "zweiter" -> "second", "ein anderer" -> "another")""")
+    map("mapStrings") should be("""Map("hallo" -> "#hello", "zweiter" -> "#second", "ein anderer" -> "#another")""")
   }
 
   it should "work on list types" in {

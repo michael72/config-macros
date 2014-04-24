@@ -13,5 +13,12 @@ class TypeConversionsTest extends FlatSpec with ShouldMatchers {
 	      splitter)("""Map("hello" -> "hallo","you" -> "du")""") should be (
 	          Map ("hello" -> "hallo", "you" -> "du"))
 	}	
+  it should "restore another Map and convert back to the same string" in {
+    val str = """Map("blue" -> "#0000ff", "red" -> "#ff0000")"""
+    val map = conversions.tryConvert("testMap", "Map[String,String]", 
+	      splitter)(str) 
+	      map should be (Map ("blue" -> "#0000ff","red" -> "#ff0000"))
+    conversions.toString(map) should be (str)
+	}	
 }
 
