@@ -238,17 +238,10 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     val config = ConfigMacros.wrap(classOf[ConfigWithRecursion], map, map.update)
 
     Then("the recursive type can be handled")
-<<<<<<< HEAD
     config.rec should be (ContainsRec(1, RecursiveClz("fruits", 
         List(RecursiveClz("apples", List(RecursiveClz("cox orange", Nil), RecursiveClz("granny smith", Nil))),
             RecursiveClz("pears", Nil))), (1,2.0f)))
   } 
-=======
-    config.rec should be(ContainsRec(1, RecursiveClz("fruits",
-      List(RecursiveClz("apples", List(RecursiveClz("cox orange", Nil), RecursiveClz("granny smith", Nil))),
-        RecursiveClz("pears", Nil))), (1, 2.0f)))
-  }
->>>>>>> f537f2ba53ab55f0b146322f96caa48ef44c8afb
 
   it should "work on types that only provide one constructor" in {
     import ConfigMacrosTest.Simple
@@ -258,11 +251,7 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     val map = HashMap[String, String]() ++ Map("simple" -> "Simple(22)")
 
     When("the trait is wrapped as config")
-<<<<<<< HEAD
     val config = ConfigMacros.wrap(classOf[ConfigMacrosTest.ConfigWithSimpleClass], map.getOrElse(_,""), map.update)
-=======
-    val config = ConfigMacros.wrap(classOf[ConfigWithSimpleClass], map.getOrElse(_, ""), map.update)
->>>>>>> f537f2ba53ab55f0b146322f96caa48ef44c8afb
     Then("the simple type can be handled")
     config.simple.i should be(22)
 
@@ -274,12 +263,6 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     config.files ::= new java.io.File(".")
     map("files") should be("""List(., C:\temp\test)""") // elements are prepended with ::=
   }
-<<<<<<< HEAD
-  
-  
-=======
-
->>>>>>> f537f2ba53ab55f0b146322f96caa48ef44c8afb
   it should "work with empty configuration strings" in {
     trait EmptyConf {
       var str: String
