@@ -34,11 +34,11 @@ SBT configuration
 Currently only scala 2.10 is supported (support for 2.11 will be added).
 add the following lines to your build.sbt:
 
-    scalaVersion := "2.10.2"
+    scalaVersion := "2.10.4"
 
     libraryDependencies ++= Seq(
-	    "org.jaylib.scala.config" %% "configbase" % "1.0.2",
-	    "org.jaylib.scala.config" %% "configmacros" % "1.0.2" % "compile")
+	    "org.jaylib.scala.config" %% "configbase" % "1.0.4",
+	    "org.jaylib.scala.config" %% "configmacros" % "1.0.4" % "compile")
 
 
 

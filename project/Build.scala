@@ -4,9 +4,14 @@ import Keys._
 object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization  := "org.jaylib.scala.config",
+<<<<<<< HEAD
     version       := "1.1.0-SNAPSHOT",
     scalaVersion        := "2.10.4",
 	//crossScalaVersions  := Seq("2.11.0-RC4", "2.10.4"),
+=======
+    version       := "1.0.4",
+    scalaVersion  := "2.10.4",
+>>>>>>> f537f2ba53ab55f0b146322f96caa48ef44c8afb
     // Sonatype OSS deployment
     publishTo <<= version { (v: String) =>
       val nexus = "https://oss.sonatype.org/"
@@ -56,9 +61,15 @@ object ConfigMacroBuild extends Build {
       libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "test")) ++ Seq(
 	  libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _ % "test"))  ++ Seq(
 	  libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-actors" % _ % "test"))  ++ Seq(
+<<<<<<< HEAD
 	  //libraryDependencies += "org.scalatest" % "scalatest_2.11.0-RC4" % "2.1.3"))
 	  libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.1.3" % "test"))
 	  
+=======
+	  libraryDependencies += ("org.scalatest" % "scalatest_2.10" % "2.1.3" % "test"))
+  )
+
+>>>>>>> f537f2ba53ab55f0b146322f96caa48ef44c8afb
   lazy val configmacros: Project = Project(
     "ConfigMacros",
     file("macros"),

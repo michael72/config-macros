@@ -47,23 +47,29 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
       var str: String
       var list: List[String]
       var map: Map[String, List[String]]
+      var mapStrings: Map[String, String]
     }
     val map = HashMap[String, String]() ++ Map(
       "str" -> """1,\"2\",3""",
       "list" -> """List("1", "2,3", 4)""",
-      "map" -> """Map("" -> List(""))""")
+      "map" -> """Map("" -> List(""))""",
+      "mapStrings" -> """Map("hallo" -> "#hello","zweiter" -> "#second")""")
+
     When("the trait is wrapped as config with the map values as initial values")
     val config = ConfigMacros.wrap(classOf[Strings], map.getOrElse(_, ""), map.update)
 
     Then("the config should contain the correct number of parsed strings")
     config.str should be("""1,"2",3""")
+    config.mapStrings should be(Map("hallo" -> "#hello", "zweiter" -> "#second"))
     config.str = """"test,1,2""""
+
     new TypeConversions().toString(config.str) should be(""""\"test,1,2\""""")
     map("str") should be(""""\"test,1,2\""""")
-
     config.list should be(List("1", "2,3", "4"))
     config.list ::= "(4,\"5,6\")"
+    config.mapStrings += ("ein anderer" -> "#another")
     map("list") should be("""List("(4,\"5,6\")", "1", "2,3", "4")""")
+    map("mapStrings") should be("""Map("hallo" -> "#hello", "zweiter" -> "#second", "ein anderer" -> "#another")""")
   }
 
   it should "work on list types" in {
@@ -147,10 +153,9 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     When("the trait is wrapped as config with the map values as initial values")
     val config = ConfigMacros.wrap(classOf[CaseWithList], map, map.update)
     Then("the item can be evaluated")
-    config.elemInnerListCase should be (InnerListCaseXX("Hugo", InnerList(2, List("one", "two"))))
+    config.elemInnerListCase should be(InnerListCaseXX("Hugo", InnerList(2, List("one", "two"))))
   }
-  
-  
+
   it should "work on complex nested generic structures however when the creator is provided" in {
     import ConfigMacrosTest._
 
@@ -166,14 +171,14 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
       def create_InnerListCaseXX(content: String) = {
         val params = Param(content)
         val innerParams = params.children(1)
-        InnerListCaseXX(create_String(params.children(0).toString), 
-            InnerList(innerParams.children(0).part.toInt, innerParams.children(1).children.map(c => create_String(c.part)).toList))
+        InnerListCaseXX(create_String(params.children(0).toString),
+          InnerList(innerParams.children(0).part.toInt, innerParams.children(1).children.map(c => create_String(c.part)).toList))
       }
     }
     When("the trait is wrapped as config using the individual converter")
     val config = ConfigMacros.wrap(classOf[CaseWithList], map, map.update, ownConverter)
     Then("the type can be handled")
-    config.elemInnerListCase should be (InnerListCaseXX("Hugo", InnerList(2, List("one", "two"))))
+    config.elemInnerListCase should be(InnerListCaseXX("Hugo", InnerList(2, List("one", "two"))))
   }
 
   it should "work on individually defined conversions" in {
@@ -186,8 +191,8 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
       def create_File(filename: String) = new java.io.File(filename)
       override def appendString(any: Any, buf: StringBuilder) {
         any match {
-	        case file: java.io.File => buf.append(file.getAbsolutePath)
-	        case any                => super.appendString(any, buf)
+          case file: java.io.File => buf.append(file.getAbsolutePath)
+          case any => super.appendString(any, buf)
         }
       }
     }
@@ -214,15 +219,15 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
       "recursive" -> """(fruits,(("apples", (("cox orange", ()), ("granny smith", ()))),("pears",())))""")
     When("the trait is wrapped as config")
     val config = ConfigMacros.wrap(classOf[ConfigWithRecursion], map, map.update)
-    
+
     Then("the recursive type can be handled")
-    config.recursive should be (RecursiveClz("fruits", 
-        List(RecursiveClz("apples", List(RecursiveClz("cox orange", Nil), RecursiveClz("granny smith", Nil))),
-            RecursiveClz("pears", Nil))))
+    config.recursive should be(RecursiveClz("fruits",
+      List(RecursiveClz("apples", List(RecursiveClz("cox orange", Nil), RecursiveClz("granny smith", Nil))),
+        RecursiveClz("pears", Nil))))
   }
 
   it should "work on on more complicated recursive types" in {
-    import ConfigMacrosTest.{ContainsRec, RecursiveClz, Small}
+    import ConfigMacrosTest.{ ContainsRec, RecursiveClz, Small }
     Given("A pure trait containing a case class with a recursive definition")
     trait ConfigWithRecursion {
       var rec: ContainsRec
@@ -231,47 +236,62 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
       "rec" -> """(1,(fruits,(("apples", (("cox orange", ()), ("granny smith", ()))),("pears",()))), (1,2.0))""")
     When("the trait is wrapped as config")
     val config = ConfigMacros.wrap(classOf[ConfigWithRecursion], map, map.update)
-    
+
     Then("the recursive type can be handled")
+<<<<<<< HEAD
     config.rec should be (ContainsRec(1, RecursiveClz("fruits", 
         List(RecursiveClz("apples", List(RecursiveClz("cox orange", Nil), RecursiveClz("granny smith", Nil))),
             RecursiveClz("pears", Nil))), (1,2.0f)))
   } 
+=======
+    config.rec should be(ContainsRec(1, RecursiveClz("fruits",
+      List(RecursiveClz("apples", List(RecursiveClz("cox orange", Nil), RecursiveClz("granny smith", Nil))),
+        RecursiveClz("pears", Nil))), (1, 2.0f)))
+  }
+>>>>>>> f537f2ba53ab55f0b146322f96caa48ef44c8afb
 
   it should "work on types that only provide one constructor" in {
-	import ConfigMacrosTest.Simple
+    import ConfigMacrosTest.Simple
     Given("A config trait using a type with only one constructor")
     And("the member is marked with @autoConstruct")
 
     val map = HashMap[String, String]() ++ Map("simple" -> "Simple(22)")
 
     When("the trait is wrapped as config")
+<<<<<<< HEAD
     val config = ConfigMacros.wrap(classOf[ConfigMacrosTest.ConfigWithSimpleClass], map.getOrElse(_,""), map.update)
+=======
+    val config = ConfigMacros.wrap(classOf[ConfigWithSimpleClass], map.getOrElse(_, ""), map.update)
+>>>>>>> f537f2ba53ab55f0b146322f96caa48ef44c8afb
     Then("the simple type can be handled")
     config.simple.i should be(22)
 
     config.simple = new Simple(33)
     config.simple.i should be(33)
     map("simple") should be("Simple(33)")
-    
+
     config.files ::= new java.io.File("""C:\temp\test""")
     config.files ::= new java.io.File(".")
     map("files") should be("""List(., C:\temp\test)""") // elements are prepended with ::=
   }
+<<<<<<< HEAD
   
   
+=======
+
+>>>>>>> f537f2ba53ab55f0b146322f96caa48ef44c8afb
   it should "work with empty configuration strings" in {
     trait EmptyConf {
       var str: String
       var list: List[String]
     }
-    val map = HashMap[String,String]()
+    val map = HashMap[String, String]()
     When("the trait is wrapped as config")
-    val config = ConfigMacros.wrap(classOf[EmptyConf], map.getOrElse(_,""), map.update)
+    val config = ConfigMacros.wrap(classOf[EmptyConf], map.getOrElse(_, ""), map.update)
     Then("the empty configuration should be handled")
-    
-    config.str should be ("")
-    config.list should be (Nil)
+
+    config.str should be("")
+    config.list should be(Nil)
   }
 
   it should "work with brackets in strings" in {
@@ -282,17 +302,17 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     }
     val map = HashMap[String, String]() ++ Map("initDir" -> "\"C:\\sample\\[dir]\"", "str" -> "1(2))", "str2" -> "\"1 [2,3], 4[\"")
     When("the trait is wrapped as config")
-    val config = ConfigMacros.wrap(classOf[EmptyConf], map.getOrElse(_,""), map.update)
+    val config = ConfigMacros.wrap(classOf[EmptyConf], map.getOrElse(_, ""), map.update)
     Then("the string configuration should be handled")
-    
-    config.initDir should be ("C:\\sample\\[dir]")
-    config.str should be ("1(2))")
-    config.str2 should be ("1 [2,3], 4[")
-    
+
+    config.initDir should be("C:\\sample\\[dir]")
+    config.str should be("1(2))")
+    config.str2 should be("1 [2,3], 4[")
+
     config.initDir = "C:\\other\\[dir]"
-    map("initDir") should be ("\"C:\\other\\[dir]\"")
+    map("initDir") should be("\"C:\\other\\[dir]\"")
     config.str2 = "2 [3,4], 5["
-    map("str2") should be ("\"2 [3,4], 5[\"")
+    map("str2") should be("\"2 [3,4], 5[\"")
   }
   
   it should "work with more complicated case classes" in {

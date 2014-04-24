@@ -1,5 +1,7 @@
 addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "2.2.0")
 
-addSbtPlugin(("com.typesafe.sbt" % "sbt-pgp" % "0.8.3").cross(CrossVersion.full)) 
+addSbtPlugin("com.typesafe.sbt" % "sbt-pgp" % "0.8.3")
+
+useGpg := true
 
 

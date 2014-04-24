@@ -58,7 +58,7 @@ final class Param(init: String, origChildren: Seq[Param] = Nil) {
    */
   override def toString = origChildren match {
     case empty if empty.isEmpty => part
-    case children => children.mkString(part + "(", ",", ")")
+    case children               => children.mkString(part + "(", ",", ")")
   }
 }
 
@@ -104,8 +104,7 @@ object Param {
           case _ => // ignore any other character left
             parseNext(idx + 1, prev, inQuotes)
         }
-      }
-      else
+      } else
         addNext(false)
     }
 
@@ -131,12 +130,22 @@ object Param {
   private[this] val internalBuf = new StringBuilder
 
   private[this] def substr(str: String, start: Int, end: Int): String = {
-	  if (start == 0 && end == str.length - 1)
-	    str
-	  else
-	    str.substring(start, end)
+    if (start == 0 && end == str.length - 1)
+      str
+    else
+      str.substring(start, end)
   }
 
+  @tailrec
+  def findNextQuote(str: String, idx: Int, quote: Char): Int = {
+    if (idx < str.length) {
+      str(idx) match {
+        case '\\'              => findNextQuote(str, idx + 2, quote)
+        case d if (d == quote) => idx
+        case _                 => findNextQuote(str, idx + 1, quote)
+      }
+    } else -1
+  }
   def unpackString(str: String): String = {
     if (!str.isEmpty) {
       var start = 0
@@ -148,13 +157,13 @@ object Param {
 
       if (start > end) ""
       else {
-        val c = str.charAt(start)
-        if ((c == '"' || c == '\'') && c == str.charAt(end))
-          substr(str, start + 1, end)
-        else
-          substr(str, start, end + 1)
+        str.charAt(start) match {
+          case quote if ((quote == '"' || quote == '\'') && findNextQuote(str, start + 1, quote) == end) =>
+            substr(str, start + 1, end)
+          case _ =>
+            substr(str, start, end + 1)
+        }
       }
-    }
-    else ""
+    } else ""
   }
 }

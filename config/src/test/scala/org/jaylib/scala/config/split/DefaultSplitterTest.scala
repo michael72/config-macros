@@ -37,6 +37,12 @@ class DefaultSplitterTest extends FlatSpec with ShouldMatchers {
 	  arr should be (Seq("1","2","3"))
 	}
 	
+	it should "unpack prefix and content" in {
+	  val (prefix,arr) = splitter.splitParamType("""Map("hello" -> "hallo", "you" -> "du")""")
+	  prefix should be ("Map")
+	  arr should be (Seq(""""hello" -> "hallo"""",""""you" -> "du""""))
+	}
+
 	it should "unpack prefix and a nested array" in {
 	  val (prefix,arr) = splitter.splitParamType("InnerList(Int,List[String])")
 	  prefix should be ("InnerList")

@@ -11,4 +11,21 @@ class ParamTest extends FlatSpec with ShouldMatchers {
 	  val toStr = param.toString
 	  toStr should be (str)
 	}	
+
+	it should "convert a simple Map[String,String] back to string" in {
+	  val str = """Map("hello" -> "hallo","zweiter" -> "second","number one" -> "#1")"""
+	  val param = Param(str)
+	  val toStr = param.toString
+	  toStr should be (str)
+	}
+	
+	it should "unpack a simple string" in {
+	  Param.unpackString(""""simple"""") should be ("simple")
+	}
+	
+	it should "not unpack a string that contains two string elements" in {
+	  val str = """"1" "2""""
+	  val unpacked = Param.unpackString(str)
+	  unpacked should be (str)
+	}
 }
