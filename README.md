@@ -31,14 +31,14 @@ This is the aim of config-macros: to provide an easy-to-use way to save and rest
 SBT configuration
 =================
 
-Currently only scala 2.10 is supported (support for 2.11 will be added).
+Currently scala 2.10 and 2.11 are supported.
 add the following lines to your build.sbt:
 
-    scalaVersion := "2.10.4"
+    scalaVersion := "2.11.7"
 
     libraryDependencies ++= Seq(
-	    "org.jaylib.scala.config" %% "configbase" % "1.0.4",
-	    "org.jaylib.scala.config" %% "configmacros" % "1.0.4" % "compile")
+	    "org.jaylib.scala.config" %% "configbase" % "1.2.0_2.11",
+	    "org.jaylib.scala.config" %% "configmacros" % "1.2.0_2.11" % "compile")
 
 
 
