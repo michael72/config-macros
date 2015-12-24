@@ -4,7 +4,7 @@ import Keys._
 object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization  := "org.jaylib.scala.config",
-    version       := "1.1.0",
+    version       := "1.2.0",
     scalaVersion        := "2.11.7",
     crossScalaVersions := Seq("2.10.2", "2.10.3", "2.10.4", "2.11.0", "2.11.7"),
 	scalacOptions ++= Seq("-deprecation"),
