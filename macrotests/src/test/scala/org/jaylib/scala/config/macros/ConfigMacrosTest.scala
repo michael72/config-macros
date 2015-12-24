@@ -1,10 +1,9 @@
 package org.jaylib.scala.config.macros
 
 import org.scalatest._
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import scala.collection.mutable.HashMap
 import org.jaylib.scala.config._
-import org.scalatest.verb.CanVerb
 import org.jaylib.scala.config.annotation._
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable.Leaf
@@ -12,8 +11,11 @@ import org.jaylib.scala.config.convert.TypeConversions
 import org.jaylib.scala.config.split.DefaultSplitter
 import org.jaylib.scala.config.split.Param
 import scala.language.reflectiveCalls
+import org.jaylib.scala.config.annotation.autoConstruct
 
-class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with GivenWhenThen {
+import ConfigMacrosTest._
+
+class ConfigMacrosTest extends FlatSpec with Matchers with GivenWhenThen {
   "ConfigMacros" should "work on primitive types" in {
     Given("a pure trait with vars of primitive types")
     trait Prim {
@@ -25,7 +27,7 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     val map = HashMap[String, String]() ++ Map("x" -> "1", "y" -> "1.23", "bool" -> "true", "string" -> "\"eene meene miste\"")
 
     When("the trait is wrapped as config with the map values as initial values")
-    val config = ConfigMacros.wrap(classOf[Prim], map, map.update)
+    val config = ConfigMacros[Prim](map, map.update)
 
     Then("the config should contain the concrete values as set in the initial map")
     config.x should be(1)
@@ -96,7 +98,6 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
   }
 
   it should "work on tuples and case classes" in {
-    import ConfigMacrosTest.MyMy
 
     trait Tup {
       var tup1: (Int, Double)
@@ -122,7 +123,6 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
   }
 
   it should "work on simple generic members in case classes" in {
-    import ConfigMacrosTest._
 
     Given("a pure trait with a case var containing a list")
     trait CaseWithList {
@@ -142,8 +142,6 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
   }
 
   it should "also support more complex nested generic structures" in {
-    import ConfigMacrosTest._
-
     Given("a pure trait with a case var containing a complex structure with generics")
     trait CaseWithList {
       var elemInnerListCase: InnerListCaseXX
@@ -157,8 +155,6 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
   }
 
   it should "work on complex nested generic structures however when the creator is provided" in {
-    import ConfigMacrosTest._
-
     Given("a pure trait with a case var containing a complex structure with generics")
     trait CaseWithList {
       var elemInnerListCase: InnerListCaseXX
@@ -210,15 +206,14 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
   }
 
   it should "work on on recursive types" in {
-    import ConfigMacrosTest.RecursiveClz
-    Given("A pure trait containing a case class with a recursive definition")
-    trait ConfigWithRecursion {
+    trait ConfigWithRecursionInner {
+      @autoConstruct
       var recursive: RecursiveClz
     }
     val map = HashMap[String, String]() ++ Map(
       "recursive" -> """(fruits,(("apples", (("cox orange", ()), ("granny smith", ()))),("pears",())))""")
     When("the trait is wrapped as config")
-    val config = ConfigMacros.wrap(classOf[ConfigWithRecursion], map, map.update)
+    val config = ConfigMacros.wrap(classOf[ConfigWithRecursionInner], map, map.update)
 
     Then("the recursive type can be handled")
     config.recursive should be(RecursiveClz("fruits",
@@ -227,31 +222,37 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
   }
 
   it should "work on on more complicated recursive types" in {
-    import ConfigMacrosTest.{ ContainsRec, RecursiveClz, Small }
-    Given("A pure trait containing a case class with a recursive definition")
     trait ConfigWithRecursion {
+      @autoConstruct
       var rec: ContainsRec
     }
+    Given("A pure trait containing a case class with a recursive definition")
     val map = HashMap[String, String]() ++ Map(
       "rec" -> """(1,(fruits,(("apples", (("cox orange", ()), ("granny smith", ()))),("pears",()))), (1,2.0))""")
     When("the trait is wrapped as config")
     val config = ConfigMacros.wrap(classOf[ConfigWithRecursion], map, map.update)
 
     Then("the recursive type can be handled")
-    config.rec should be (ContainsRec(1, RecursiveClz("fruits", 
-        List(RecursiveClz("apples", List(RecursiveClz("cox orange", Nil), RecursiveClz("granny smith", Nil))),
-            RecursiveClz("pears", Nil))), (1,2.0f)))
-  } 
+    config.rec should be(ContainsRec(1, RecursiveClz("fruits",
+      List(RecursiveClz("apples", List(RecursiveClz("cox orange", Nil), RecursiveClz("granny smith", Nil))),
+        RecursiveClz("pears", Nil))), (1, 2.0f)))
+  }
 
   it should "work on types that only provide one constructor" in {
-    import ConfigMacrosTest.Simple
+    trait ConfigWithSimpleClass {
+      @autoConstruct
+      var simple: Simple
+      @autoConstruct
+      var files: List[java.io.File] // files as well - they have a constructor with a single string argument
+    }
+
     Given("A config trait using a type with only one constructor")
     And("the member is marked with @autoConstruct")
 
     val map = HashMap[String, String]() ++ Map("simple" -> "Simple(22)")
 
     When("the trait is wrapped as config")
-    val config = ConfigMacros.wrap(classOf[ConfigMacrosTest.ConfigWithSimpleClass], map.getOrElse(_,""), map.update)
+    val config = ConfigMacros.wrap(classOf[ConfigWithSimpleClass], map.getOrElse(_, ""), map.update)
     Then("the simple type can be handled")
     config.simple.i should be(22)
 
@@ -297,34 +298,79 @@ class ConfigMacrosTest extends FlatSpec with ShouldMatchers with CanVerb with Gi
     config.str2 = "2 [3,4], 5["
     map("str2") should be("\"2 [3,4], 5[\"")
   }
-  
+
   it should "work with more complicated case classes" in {
-    
-    val conversion = new TypeConversions {
-    	val splitter = new DefaultSplitter
-    	def create_java_io_File(str: String) = new java.io.File(str.trim)
-    	def toString(file: java.io.File) = file.getPath.trim
+    trait FileAssocSettings {
+      var someInt: Int
+      var fileAssocs: FileAssoc
+      var someBoolean: Boolean
+      @notSaved
+      var notSaved = ""
     }
 
-      val defaults = Map[String, String](
-    		  "someInt" -> "77",
-    		  "someBoolean" -> "true",
-    		  "fileAssocs" -> """FileAssoc(Map("..\testsomething" -> List((5, 7), (1, 2)), "yiha" -> List((2,3)), "empty" -> List()))"""
-     )
+    val conversion = new TypeConversions {
+      val splitter = new DefaultSplitter
+      def create_java_io_File(str: String) = new java.io.File(str.trim)
+      def toString(file: java.io.File) = file.getPath.trim
+    }
+
+    val defaults = Map[String, String](
+      "someInt" -> "77",
+      "someBoolean" -> "true",
+      "fileAssocs" -> """FileAssoc(Map("..\testsomething" -> List((5, 7), (1, 2)), "yiha" -> List((2,3)), "empty" -> List()))""",
+      "notSaved" -> "<empty>")
+
+    val map = HashMap[String, String]() ++ defaults
+    val config = ConfigMacros.wrap(classOf[FileAssocSettings], map.getOrElse(_, ""), map.update, conversion)
+    val cmp = FileAssoc(Map(new java.io.File("..\\testsomething") -> List((5.toByte, 7), (1.toByte, 2)), new java.io.File("yiha") -> List((2.toByte, 3)), new java.io.File("empty") -> List()))
+    config.fileAssocs should be(cmp)
+    val file = new java.io.File("..\\testsomething")
+    val file2 = new java.io.File("a\\b\\c\\d.txt")
+    val file3 = new java.io.File("simple")
+    config.notSaved = "not saved"
+    config.fileAssocs = config.fileAssocs.addAssoc(file, (1.toByte, 3))
+    config.fileAssocs = config.fileAssocs.addAssoc(file2, (-3.toByte, 12))
+    config.fileAssocs = config.fileAssocs.addAssoc(file2, (77.toByte, -44))
+    config.fileAssocs = config.fileAssocs.addAssoc(file2, (22.toByte, 99))
+    config.fileAssocs = config.fileAssocs.addAssoc(file2, (0.toByte, -1))
+    map("fileAssocs") should be("""FileAssoc(Map(..\testsomething -> List((1, 3), (5, 7), (1, 2)), yiha -> List((2, 3)), empty -> Nil(), a\b\c\d.txt -> List((0, -1), (22, 99), (77, -44), (-3, 12))))""")
+    map("notSaved") should be("<empty>")
+  }
   
-     val map = HashMap[String, String]() ++ defaults
-     val config = ConfigMacros.wrap(classOf[ConfigMacrosTest.FileAssocSettings], map.getOrElse(_,""), map.update, conversion)
-     val cmp = ConfigMacrosTest.FileAssoc(Map(new java.io.File("..\\testsomething") -> List((5.toByte, 7), (1.toByte, 2)), new java.io.File("yiha") -> List((2.toByte,3)), new java.io.File("empty") -> List()))
-     config.fileAssocs should be (cmp)
-     val file = new java.io.File("..\\testsomething")
-     val file2 = new java.io.File("a\\b\\c\\d.txt")
-     val file3 = new java.io.File("simple")
-     config.fileAssocs = config.fileAssocs.addAssoc(file, (1.toByte, 3))
-     config.fileAssocs = config.fileAssocs.addAssoc(file2, (-3.toByte, 12))
-     config.fileAssocs = config.fileAssocs.addAssoc(file2, (77.toByte, -44))
-     config.fileAssocs = config.fileAssocs.addAssoc(file2, (22.toByte, 99))
-     config.fileAssocs = config.fileAssocs.addAssoc(file2, (0.toByte, -1))
-     map("fileAssocs") should be ("""FileAssoc(Map(..\testsomething -> List((1, 3), (5, 7), (1, 2)), yiha -> List((2, 3)), empty -> Nil(), a\b\c\d.txt -> List((0, -1), (22, 99), (77, -44), (-3, 12))))""")
+  it should "work with more complicated case classes and initMap" in {
+    trait FileAssocSettings {
+      @hex
+      var someHexInt: Int
+      var fileAssocs: FileAssoc
+      var someBoolean: Boolean
+      @notSaved
+      var notSaved = ""
+    }
+
+    val conversion = new TypeConversions {
+      val splitter = new DefaultSplitter
+      def create_java_io_File(str: String) = new java.io.File(str.trim)
+      def toString(file: java.io.File) = file.getPath.trim
+    }
+
+    val defaults = ConfigMacros.initMap(new FileAssocSettings {
+      var someHexInt = 0x77
+      var someBoolean = true
+      var fileAssocs = FileAssoc(Map(new java.io.File("..\\testsomething") -> List((5, 7), (1, 2)), new java.io.File("yiha") -> List((2,3)), new java.io.File("empty") -> Nil))
+    }, conversion)
+
+    val map = HashMap[String, String]() ++ defaults
+    
+    val config = ConfigMacros.wrap(classOf[FileAssocSettings], map.getOrElse(_, ""), map.update, conversion)
+    
+    map("someHexInt") should be ("0x77")
+    map("fileAssocs") should be("""FileAssoc(Map(..\testsomething -> List((5, 7), (1, 2)), yiha -> List((2, 3)), empty -> Nil()))""")
+    map("someBoolean") should be ("true")
+    
+    config.someHexInt = 0x88
+    map("someHexInt") should be ("0x88")
+    config.fileAssocs = config.fileAssocs.addAssoc(new java.io.File("tmp"), (11.toByte, -1))
+    map("fileAssocs") should be("""FileAssoc(Map(..\testsomething -> List((5, 7), (1, 2)), yiha -> List((2, 3)), empty -> Nil(), tmp -> List((11, -1))))""")
   }
 }
 
@@ -342,27 +388,15 @@ object ConfigMacrosTest {
   case class Small(i: Int)
   case class RecursiveClz(name: String, children: List[RecursiveClz])
   case class ContainsRec(before: Int, rec: RecursiveClz, tup: (Int, Float))
-  trait ConfigWithSimpleClass {
-      @autoConstruct 
-      var simple: Simple
-      @autoConstruct
-      var files: List[java.io.File] // files as well - they have a constructor with a single string argument
-  }
   case class FileAssoc(mapAssocs: Map[java.io.File, List[(Byte, Int)]]) {
-	  def setAssoc (file : java.io.File, assocs: List[(Byte, Int)]) =
-	    new FileAssoc(mapAssocs + ((file, assocs)))
-	  
-	  def addAssoc (file : java.io.File, assoc: (Byte, Int)) = 
-	    if (mapAssocs.contains(file)) 
-	    	new FileAssoc(mapAssocs.updated(file, assoc :: mapAssocs(file)))  
-	    else 
-	    	new FileAssoc(mapAssocs.updated(file, assoc :: Nil))
-	}
-  trait FileAssocSettings {
-	var someInt: Int
-	var fileAssocs: FileAssoc
-	var someBoolean : Boolean
-	@volatile 
-	var notSaved = ""
+    def setAssoc(file: java.io.File, assocs: List[(Byte, Int)]) =
+      new FileAssoc(mapAssocs + ((file, assocs)))
+
+    def addAssoc(file: java.io.File, assoc: (Byte, Int)) =
+      if (mapAssocs.contains(file))
+        new FileAssoc(mapAssocs.updated(file, assoc :: mapAssocs(file)))
+      else
+        new FileAssoc(mapAssocs.updated(file, assoc :: Nil))
   }
+
 }

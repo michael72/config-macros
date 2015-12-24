@@ -1,15 +1,14 @@
 package org.jaylib.scala.config.macros
 
 import org.scalatest._
-import org.scalatest.verb.CanVerb
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import scala.tools.nsc._
 import scala.tools.nsc.interpreter._
 import java.io.StringWriter
 import java.io.PrintWriter
 
 
-class ConfigMacrosCompileTest extends FlatSpec with ShouldMatchers with CanVerb with GivenWhenThen {
+class ConfigMacrosCompileTest extends FlatSpec with Matchers with GivenWhenThen {
   // compiler is only created once - as this is very time consuming
   // the interpreted code should be made independent from one another (i.e. by wrapping each in a unit)
   import language.reflectiveCalls
@@ -79,8 +78,27 @@ class ConfigMacrosCompileTest extends FlatSpec with ShouldMatchers with CanVerb 
     Then("the interpreter should issue a warning for x")
     res should include("warning: variable x cannot be overridden")
     And("give a hint how to remove the warning")
-    res should include("consider making it abstract or add the @volatile annotation to suppress this warning!")
+    res should include("consider making it abstract or add the @notSaved annotation to suppress this warning!")
   }
+
+
+  it should "not issue a compile warning when config @notSaved annotation is used" in {
+    When("interpreting a config trait with an initialized variable with @notSaved being used")
+    val res = fixture.interpret("""{
+    import org.jaylib.scala.config.annotation.notSaved
+    trait ConfigInitVar {
+      @notSaved
+      var x = true
+    }
+    val map = HashMap[String, String]()
+    val config = ConfigMacros.wrap(classOf[ConfigInitVar], map, map.update)
+  }""")
+    Then("the interpreter should not issue a warning for x")
+    res should not include("warning: variable x cannot be overridden")
+    And("not give a hint how to remove the warning")
+    res should not include("consider making it abstract or add the @notSaved annotation to suppress this warning!")
+  }
+  
 }
 
 object ConfigMacrosCompileTest {
