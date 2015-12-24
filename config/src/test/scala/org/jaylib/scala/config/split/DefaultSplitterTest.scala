@@ -1,9 +1,9 @@
 package org.jaylib.scala.config.split
 
 import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 
-class DefaultSplitterTest extends FlatSpec with ShouldMatchers {
+class DefaultSplitterTest extends FlatSpec with Matchers {
 	val splitter = new DefaultSplitter
   
 	"A splitter" should "split a simple comma-separated String to an array" in {

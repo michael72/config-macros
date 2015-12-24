@@ -1,10 +1,10 @@
 package org.jaylib.scala.config.convert
 
 import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import org.jaylib.scala.config.split.DefaultSplitter
 
-class TypeConversionsTest extends FlatSpec with ShouldMatchers {
+class TypeConversionsTest extends FlatSpec with Matchers {
   val splitter = new DefaultSplitter
   val conversions = new TypeConversions
   

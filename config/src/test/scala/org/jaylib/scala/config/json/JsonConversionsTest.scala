@@ -1,13 +1,13 @@
 package org.jaylib.scala.config.json
 
 import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import org.jaylib.scala.config.split.DefaultSplitter
 import org.scalatest.GivenWhenThen
 import org.jaylib.scala.config.split.Param
 import org.jaylib.scala.config.convert.ConversionException
 
-class JsonConversionsTest extends FlatSpec with ShouldMatchers with GivenWhenThen {
+class JsonConversionsTest extends FlatSpec with Matchers with GivenWhenThen {
 
   val conv = new JsonConversions
   "JsonConversions" should "convert a simple case class" in {
