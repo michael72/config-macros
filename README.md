@@ -1,7 +1,7 @@
 config-macros
 =============
 
-Scala macros to provide a wrapper that maps a configuration given as trait to a getter/setter with strings. This makes it easy to access a configuration in a most direct and typesafe way and perform the saving/loading with lots of things already done automatically.
+Scala macros to provide a wrapper for typesafe configurations that are mapped to key/value pairs as strings. The macros makes it easy to access a configuration in a direct and typesafe way and perform the conversions from and to string.
 
 Motivation
 ==========
@@ -45,7 +45,7 @@ add the following lines to your build.sbt:
 Usage
 =====
 
-To use the macros, simply define a trait (extending [ObservableConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/ObservableConfig.scala) if your want to use the bind features):
+To use the macros simply define a trait (extending [ObservableConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/ObservableConfig.scala) if you want to use the bind features):
 
     trait Config extends ObservableConfig {
       var lastDirectory: File
@@ -59,15 +59,15 @@ The default values for the config are defined in a Map:
 
     val defaults = Map("lastDirectory" -> ".", "host" -> "localhost", "port" -> "8080", "autoConnect" -> "false")
 
-To use the macro a getter and a setter for the values has to be provided. In this case, I use [PropertiesConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/properties/PropertiesConfig.scala) to save the settings automatically to a properties file:
+To use the macro a getter and a setter for the values has to be provided. In this case, I use [PropertiesConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/properties/PropertiesConfig.scala) to save the settings to a properties file:
     
     val props = new PropertiesConfig(new File(new File(System.getenv("APPDATA"), "MyProduct"), "MyApp.properties"), defaults)
     
-before exiting the `store` has to be called:
+before exiting the `store` method has to be called:
 
     props.store
     
-Alternatively instead of saving to a properties file, the config can be stored to the (user-)preferences [PreferencesConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/preferences/PreferencesConfig.scala):
+Alternatively to saving the config to a properties file it could also be stored to the (user-)preferences [PreferencesConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/preferences/PreferencesConfig.scala):
 
     val props = new PreferencesConfig(classOf[Config], defaults)
 
