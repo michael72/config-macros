@@ -1,10 +1,9 @@
 name := "SampleConfig"
 
-version := "1.1"
+version := "1.2"
 
-scalaVersion := "2.10.2"
+scalaVersion := "2.11.7"
 
-// remark: in sbt version 0.13 : use scalaVersion.value
 libraryDependencies ++= Seq(
-	"org.jaylib.scala.config" %% "configbase" % "1.0.2",
-	"org.jaylib.scala.config" %% "configmacros" % "1.0.2" % "compile")
+	"org.jaylib.scala.config" %% "configbase" % "1.2.0",
+	"org.jaylib.scala.config" %% "configmacros" % "1.2.0" % "compile")
