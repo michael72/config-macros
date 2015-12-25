@@ -31,7 +31,7 @@ This is the aim of config-macros: to provide an easy-to-use way to save and rest
 SBT configuration
 =================
 
-Currently scala 2.10 and 2.11 are supported. For Scala 2.11 use version 1.2.0, for Scala 2.10 use version 1.0.4.
+Currently scala 2.10 and 2.11 are supported. 
 add the following lines to your build.sbt:
 
     scalaVersion := "2.11.7"
