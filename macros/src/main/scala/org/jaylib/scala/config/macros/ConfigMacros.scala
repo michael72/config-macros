@@ -3,7 +3,7 @@ package org.jaylib.scala.config.macros
 import scala.language.experimental.macros
 import scala.collection.{ MapLike, TraversableLike }
 import scala.collection.mutable.{ HashSet, ListBuffer, HashMap }
-import scala.reflect.macros.whitebox.Context
+import scala.reflect.macros.Context
 import org.jaylib.scala.config._
 import org.jaylib.scala.config.convert._
 import org.jaylib.scala.config.split._
@@ -53,11 +53,11 @@ object ConfigMacros {
   def initMap[C, A](trtClz: Class[C], trtImpl: A): Map[String, String] = macro initMapImpl2[C, A]
   def initMap[A](trt: A): Map[String, String] = macro initMapImpl3[A]
 
-  def wrapTraitImpl2[A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context)(trt: c.Expr[A], getter: c.Expr[String => String], setter: c.Expr[(String, String) => Unit], converter: c.Expr[B]) = {
+  def wrapTraitImpl2[A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context)(trt: c.Expr[A], getter: c.Expr[String => String], setter: c.Expr[(String, String) => Unit], converter: c.Expr[B]) : c.Expr[A]= {
     import c.universe._
     wrapTraitImpl(c)(trt, getter, setter, converter, reify(splitter))
   }
-  def wrapTraitImpl3[A: c.WeakTypeTag](c: Context)(trt: c.Expr[A], getter: c.Expr[String => String], setter: c.Expr[(String, String) => Unit]) = {
+  def wrapTraitImpl3[A: c.WeakTypeTag](c: Context)(trt: c.Expr[A], getter: c.Expr[String => String], setter: c.Expr[(String, String) => Unit]) : c.Expr[A] = {
     import c.universe._
     wrapTraitImpl(c)(trt, getter, setter, reify(defaultConversions), reify(splitter))
   }
@@ -65,15 +65,16 @@ object ConfigMacros {
   /** Shortcut implementation which only applies getter and setter */
   def apply[A](getter: String => String, setter: (String, String) => Unit): A = macro applyImpl[A]
 
-  def applyImpl[A: c.WeakTypeTag](c: Context)(getter: c.Expr[String => String], setter: c.Expr[(String, String) => Unit]): c.universe.Tree = {
+  def applyImpl[A: c.WeakTypeTag](c: Context)(getter: c.Expr[String => String], setter: c.Expr[(String, String) => Unit]): c.Expr[A] = {
     import c.universe._
     wrapTraitImpl3(c)(null, getter, setter)
   }
   def wrapTraitImpl[A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context)(trt: c.Expr[A], getter: c.Expr[String => String], setter: c.Expr[(String, String) => Unit],
-    converter: c.Expr[B], paramSplitter: c.Expr[Splitter]): c.universe.Tree = {
+    converter: c.Expr[B], paramSplitter: c.Expr[Splitter]) : c.Expr[A] = {
     import c.universe._
     val wrapped = weakTypeOf[A]
     val convType = weakTypeOf[B]
+    def TermName(s: String) = newTermName(s)
 
     def hasBase(theType: Type, base: String): Boolean =
       theType.baseClasses.exists(_.typeSignature.typeSymbol.name.decodedName.toString == base)
@@ -81,7 +82,7 @@ object ConfigMacros {
     val mapAnnotations = HashMap[Symbol, Set[String]]()
     def getAnnotations(method: Symbol) = {
       mapAnnotations.getOrElseUpdate(method,
-        method.annotations.map(ann => splitter.shortNameOf(ann.tree.tpe.toString)).toSet)
+        method.annotations.map(ann => splitter.shortNameOf(ann.tpe.toString)).toSet)
     }
     def hasAnnotation(method: Symbol, annotation: String) = getAnnotations(method).contains(annotation)
 
@@ -131,7 +132,7 @@ object ConfigMacros {
         if (!hasAnnotation(m, "notSaved")) {
           c.warning(m.pos, s"variable ${m.name.decodedName.toString} cannot be overridden - consider making it abstract or add the @notSaved annotation to suppress this warning!")
         }
-        q""
+        c.parse("")
       }
       // override only abstract vars and values
       case m: MethodSymbol if !m.isConstructor && m.accessed == NoSymbol => {
@@ -275,7 +276,7 @@ object ConfigMacros {
                    * should deliver "B(A(Int),Int)"
                    */
                   def getSignatureOfCase(tpe: Type)(implicit signatures: List[String] = List(tpe.toString)): String = util.Try {
-                    tpe.member(TermName("copy")).asInstanceOf[MethodSymbol].typeSignature match {
+                    tpe.member(newTermName("copy")).asInstanceOf[MethodSymbol].typeSignature match {
                       case MethodType(params, _) => params.map { innerType =>
                         val sig = innerType.typeSignature
                         val inner = sig.toString
@@ -341,7 +342,7 @@ object ConfigMacros {
           if (splitterUsed) List(ValDef(privateThisVal, splitterName, TypeTree(), paramSplitter.tree)) else Nil) ::: (
             if (hexConverterUsed) List(q"""private[this] def $hexConverterName(conv: Int) = String.format("0x%02x", new java.lang.Integer(conv))""") else Nil)
 
-    q"new $wrapped { ..${internalVals ::: internalVars.toList ::: methods} }"
+    c.Expr(q"new $wrapped { ..${internalVals ::: internalVars.toList ::: methods} }")
   }
 
   val splitter: Splitter = new DefaultSplitter
@@ -365,16 +366,16 @@ object ConfigMacros {
     initMapImpl2(c)(trt, trt)
   }
 
-  def initMapImpl[C: c.WeakTypeTag, A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context)(trtClz: c.Expr[C], trt: c.Expr[A], converter: c.Expr[B]) = {
+  def initMapImpl[C: c.WeakTypeTag, A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context)(trtClz: c.Expr[C], trt: c.Expr[A], converter: c.Expr[B]) : c.Expr[Map[String, String]] = {
     import c.universe._
     val wrappedClz = weakTypeOf[C]
     val prefix = "macro$map$$"
-    val config = TermName(prefix + "config")
+    val config = newTermName(prefix + "config")
     val configDef = q"val $config = $trt"
     val mapAnnotations = HashMap[Symbol, Set[String]]()
     def getAnnotations(method: Symbol) = {
       mapAnnotations.getOrElseUpdate(method,
-        method.annotations.map(ann => splitter.shortNameOf(ann.tree.tpe.toString)).toSet)
+        method.annotations.map(ann => splitter.shortNameOf(ann.tpe.toString)).toSet)
     }
     def hasAnnotation(method: Symbol, annotation: String) = getAnnotations(method).contains(annotation)
     val classAnnotations = getAnnotations(wrappedClz.typeSymbol)
@@ -393,20 +394,21 @@ object ConfigMacros {
         val name = m.name.decodedName.toString
         val returnType = m.returnType.toString
         val hex = List("Int", "Short", "Byte").contains(returnType) && (classAnnotations.contains("hex") || hasAnnotation(m, "hex")) && !hasAnnotation(m, "dec")
+        val termName = m.name.toTermName
         if (checkIsPrimitive(name, returnType, isDefaultConverter, overridden)) {
-          val conv = if (hex) q"""{"0x" + java.lang.Integer.toHexString($config.${m.name})}"""
+          val conv = if (hex) q"""{"0x" + java.lang.Integer.toHexString($config.${termName})}"""
           else returnType match {
-            case "Int" => q"java.lang.Integer.toString($config.${m.name})"
+            case "Int" => q"java.lang.Integer.toString($config.${termName})"
             case _ =>
               val tpe = c.parse(s"java.lang.${m.returnType.toString}")
-              q"$tpe.toString($config.${m.name})"
+              q"$tpe.toString($config.${termName})"
           }
           q"""($name, $conv)"""
         } else {
-          q"""($name, $converter.toString($config.${m.name}))"""
+          q"""($name, $converter.toString($config.${termName}))"""
         }
     }.toList
-    q"{$configDef; Map[String,String](..$assignments)}"
+    c.Expr(q"{$configDef; Map[String,String](..$assignments)}")
   }
 
   def checkDefaultConverter[B: c.WeakTypeTag](c: Context)(converter: c.Expr[B]): (Option[Boolean], List[String]) = {
@@ -418,7 +420,7 @@ object ConfigMacros {
     // Some(false) => no, it is overridden and the List overridden should contain all overridden methods
     // None => could not estimate if it is the default or overridden
     if (converter.tree.children.isEmpty) {
-      val ovr = converter.tree.tpe.decls.map(_.name.decodedName.toString).toList
+      val ovr = converter.tree.tpe.declarations.map(_.name.decodedName.toString).toList
       (if (ovr.isEmpty) None else Some(false), ovr)
     } else {
       val clzDef = converter.tree.children(0)
