@@ -69,19 +69,22 @@ before exiting the `store` method has to be called:
     
 Alternatively to saving the config to a properties file it could also be stored to the (user-)preferences [PreferencesConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/preferences/PreferencesConfig.scala):
 
-    val props = new PreferencesConfig(classOf[Config], defaults)
-
+```scala
+val props = new PreferencesConfig(classOf[Config], defaults)
+```
 Then we can use [ConfigMacros](https://github.com/michael72/config-macros/blob/master/macros/src/main/scala/org/jaylib/scala/config/macros/ConfigMacros.scala) to generate getters and setters for the Config-trait above. I also provide own [TypeConversions](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/convert/TypeConversions.scala) for java.io.File to save the file as absolute path:
 
-    val config = ConfigMacros.wrap(classOf[Config], props.getProperty, props.setProperty, new TypeConversions {
-      def create_File(filename: String) = new File(filename)
-      override def appendString(any: Any, buf: StringBuilder) {
-        any match {
-          case file: File => buf.append(file.getAbsolutePath)
-          case any        => super.appendString(any, buf)
-        }
-      }
-    })
+```scala
+val config = ConfigMacros.wrap(classOf[Config], props.getProperty, props.setProperty, new TypeConversions {
+  def create_File(filename: String) = new File(filename)
+  override def appendString(any: Any, buf: StringBuilder) {
+    any match {
+      case file: File => buf.append(file.getAbsolutePath)
+      case any        => super.appendString(any, buf)
+    }
+  }
+})
+```
 
 Now the config can be used as described in the code at the beginning.
 
