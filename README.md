@@ -11,23 +11,23 @@ Storing and restoring properties can usually not be done in a typesafe way. Cons
 Now, wouldn't it be nice to handle settings directly in the following way?
 
 ```scala
-    config.port += 1
-	config.host = "127.0.0.1"
-	config.autoConnect = !config.autoConnect
-	config.lastFiles += new java.io.File(raw"C:\temp\test")
+config.port += 1
+config.host = "127.0.0.1"
+config.autoConnect = !config.autoConnect
+config.lastFiles += new java.io.File(raw"C:\temp\test")
 ```
 
 Or even listen to property changes
 
 ```scala
-    config.bindTo(config.port) {
-      (oldPort, newPort) =>
-        println(s"port changed from ${oldPort} to ${newPort}")
-    }
-    /* Simplified version of binding where the old value is neglected. */
-    config.bindToValue(config.autoConnect) {
-      autoConnect => println("autoConnect is set to " + autoConnect)
-    }
+config.bindTo(config.port) {
+  (oldPort, newPort) =>
+    println(s"port changed from ${oldPort} to ${newPort}")
+}
+/* Simplified version of binding where the old value is neglected. */
+config.bindToValue(config.autoConnect) {
+  autoConnect => println("autoConnect is set to " + autoConnect)
+}
 ```
 
 This is the aim of config-macros: to provide an easy-to-use way to save and restore application settings.
@@ -39,11 +39,11 @@ Currently scala 2.10 and 2.11 are supported with version 1.2.0.
 add the following lines to your build.sbt:
 
 ```scala
-    scalaVersion := "2.11.7"
+scalaVersion := "2.11.7"
 
-    libraryDependencies ++= Seq(
-	    "org.jaylib.scala.config" %% "configbase" % "1.2.0",
-	    "org.jaylib.scala.config" %% "configmacros" % "1.2.0" % "compile")
+libraryDependencies ++= Seq(
+ "org.jaylib.scala.config" %% "configbase" % "1.2.0",
+ "org.jaylib.scala.config" %% "configmacros" % "1.2.0" % "compile")
 ```
 
 
@@ -52,13 +52,15 @@ Usage
 
 To use the macros simply define a trait (extending [ObservableConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/ObservableConfig.scala) if you want to use the bind features):
 
-    trait Config extends ObservableConfig {
-      var lastDirectory: File
-      var lastFiles: Set[File]
-      var host: String
-      var port: Int
-      var autoConnect: Boolean
-    }
+```scala
+trait Config extends ObservableConfig {
+  var lastDirectory: File
+  var lastFiles: Set[File]
+  var host: String
+  var port: Int
+  var autoConnect: Boolean
+}
+```
 
 The default values for the config are defined in a Map:
 
