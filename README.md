@@ -10,13 +10,16 @@ Storing and restoring properties can usually not be done in a typesafe way. Cons
 
 Now, wouldn't it be nice to handle settings directly in the following way?
 
+```scala
     config.port += 1
 	config.host = "127.0.0.1"
 	config.autoConnect = !config.autoConnect
 	config.lastFiles += new java.io.File(raw"C:\temp\test")
-    
+```
+
 Or even listen to property changes
 
+```scala
     config.bindTo(config.port) {
       (oldPort, newPort) =>
         println(s"port changed from ${oldPort} to ${newPort}")
@@ -25,7 +28,8 @@ Or even listen to property changes
     config.bindToValue(config.autoConnect) {
       autoConnect => println("autoConnect is set to " + autoConnect)
     }
-    
+```
+
 This is the aim of config-macros: to provide an easy-to-use way to save and restore application settings.
 
 SBT configuration
@@ -34,12 +38,13 @@ SBT configuration
 Currently scala 2.10 and 2.11 are supported with version 1.2.0.
 add the following lines to your build.sbt:
 
+```scala
     scalaVersion := "2.11.7"
 
     libraryDependencies ++= Seq(
 	    "org.jaylib.scala.config" %% "configbase" % "1.2.0",
 	    "org.jaylib.scala.config" %% "configmacros" % "1.2.0" % "compile")
-
+```
 
 
 Usage
@@ -60,12 +65,16 @@ The default values for the config are defined in a Map:
     val defaults = Map("lastDirectory" -> ".", "host" -> "localhost", "port" -> "8080", "autoConnect" -> "false")
 
 To use the macro a getter and a setter for the values has to be provided. In this case, I use [PropertiesConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/properties/PropertiesConfig.scala) to save the settings to a properties file:
-    
+   
+```scala
     val props = new PropertiesConfig(new File(new File(System.getenv("APPDATA"), "MyProduct"), "MyApp.properties"), defaults)
-    
+```
+
 before exiting the `store` method has to be called:
 
-    props.store
+```scala
+props.store
+```
     
 Alternatively to saving the config to a properties file it could also be stored to the (user-)preferences [PreferencesConfig](https://github.com/michael72/config-macros/blob/master/config/src/main/scala/org/jaylib/scala/config/preferences/PreferencesConfig.scala):
 
